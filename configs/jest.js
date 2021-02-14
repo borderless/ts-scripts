@@ -2,7 +2,7 @@
 module.exports = {
   rootDir: process.cwd(),
   transform: {
-    "\\.[tj]sx?$": "ts-jest",
+    "\\.[tj]sx?$": require.resolve("ts-jest"),
   },
   testRegex: "(?:/__tests__/.*|\\.(?:test|spec))\\.[tj]sx?$",
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
