@@ -5,7 +5,6 @@ import { spawn } from "child_process";
 import { resolve, join, posix, dirname, relative } from "path";
 import { object, string, array } from "zod";
 import { eslintGlob, prettierGlob } from "./common";
-import { cwd } from "process";
 
 /**
  * Configuration files.
@@ -40,7 +39,7 @@ interface RunOptions {
 function run(
   command: string,
   args: string[] = [],
-  { name = command, cwd = process.cwd() }: RunOptions = {}
+  { name = command, cwd }: RunOptions = {}
 ) {
   console.log(`> Running "${name}"...`);
 
@@ -250,9 +249,9 @@ export interface Config {
 /**
  * Load `ts-scripts` configuration.
  */
-export async function getConfig(): Promise<Config> {
-  const config = await pkgConf("ts-scripts");
-  const dir = dirname(pkgConf.filepath(config) || cwd());
+export async function getConfig(cwd: string = process.cwd()): Promise<Config> {
+  const config = await pkgConf("ts-scripts", { cwd });
+  const dir = dirname(pkgConf.filepath(config) || cwd);
   const {
     src = ["src"],
     dist = ["dist"],
@@ -261,10 +260,14 @@ export async function getConfig(): Promise<Config> {
   return { dir, src, dist, project };
 }
 
+export interface Options {
+  cwd?: string;
+}
+
 /**
  * Main script runtime.
  */
-export async function main(args: string[]) {
+export async function main(args: string[], { cwd }: Options) {
   const [command, ...flags] = args;
   const script = get(scripts, command);
 
@@ -272,6 +275,6 @@ export async function main(args: string[]) {
     throw new TypeError(`Script does not exist: ${command}`);
   }
 
-  const config = await getConfig();
+  const config = await getConfig(cwd);
   return script(flags, config);
 }
