@@ -1,10 +1,12 @@
 {
   "name": "@borderless/ts-scripts",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Simple, mostly opinionated, scripts to build TypeScript modules",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
-  "bin": "dist/bin.js",
+  "bin": {
+    "ts-scripts": "dist/bin.js"
+  },
   "files": [
     "configs/",
     "dist/"
