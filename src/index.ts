@@ -3,7 +3,7 @@ import pkgConf from "pkg-conf";
 import isCI from "is-ci";
 import { spawn } from "child_process";
 import { resolve, join, posix, dirname, relative } from "path";
-import { object, string, array } from "zod";
+import { object, string, array, boolean } from "zod";
 import { eslintGlob, prettierGlob } from "./common";
 
 /**
@@ -11,9 +11,6 @@ import { eslintGlob, prettierGlob } from "./common";
  */
 const configDir = resolve(__dirname, "../configs");
 const configLintStaged = join(configDir, "lint-staged.js");
-const configEslint = join(configDir, "eslint.js");
-const configJest = join(configDir, "jest.js");
-const configHusky = join(configDir, "husky");
 
 /**
  * Paths to node.js CLIs in use.
@@ -150,6 +147,13 @@ function getEslintPaths(
 }
 
 /**
+ * Get the expected ESLint config with react support.
+ */
+function getEslintConfig({ react }: Config) {
+  return join(configDir, react ? "eslint.react.js" : "eslint.js");
+}
+
+/**
  * Lint the project using `eslint`.
  */
 export async function lint(argv: string[], config: Config) {
@@ -159,25 +163,36 @@ export async function lint(argv: string[], config: Config) {
   );
 
   const eslintPaths = getEslintPaths(_, filterPaths, config);
-  await run(PATHS.eslint, ["--fix", "--config", configEslint, ...eslintPaths], {
-    cwd: config.dir,
-    name: "eslint --fix",
-  });
+  await run(
+    PATHS.eslint,
+    ["--fix", "--config", getEslintConfig(config), ...eslintPaths],
+    {
+      cwd: config.dir,
+      name: "eslint --fix",
+    }
+  );
 }
 
 /**
  * Run checks intended for CI, basically linting/formatting without auto-fixing.
  */
-export async function check(argv: string[], { src, dir }: Config) {
-  const eslintPaths = src.map((x) => posix.join(x, `**/${eslintGlob}`));
-  await run(PATHS.eslint, ["--config", configEslint, ...eslintPaths], {
-    cwd: dir,
-    name: "eslint",
-  });
+export async function check(argv: string[], config: Config) {
+  const eslintPaths = config.src.map((x) => posix.join(x, `**/${eslintGlob}`));
+  const prettierPaths = config.src.map((x) =>
+    posix.join(x, `**/${prettierGlob}`)
+  );
 
-  const prettierPaths = src.map((x) => posix.join(x, `**/${prettierGlob}`));
+  await run(
+    PATHS.eslint,
+    ["--config", getEslintConfig(config), ...eslintPaths],
+    {
+      cwd: config.dir,
+      name: "eslint",
+    }
+  );
+
   await run(PATHS.prettier, ["--check", ...prettierPaths], {
-    cwd: dir,
+    cwd: config.dir,
     name: "prettier --check",
   });
 }
@@ -209,7 +224,7 @@ export async function specs(argv: string[], { src, dir }: Config) {
     PATHS.jest,
     args(
       "--coverage",
-      ["--config", configJest],
+      ["--config", join(configDir, "jest.js")],
       ...src.map((x) => ["--roots", posix.join("<rootDir>", x)]),
       ci && "--ci",
       watch && "--watch",
@@ -243,7 +258,7 @@ export async function format(argv: string[], { dir, src }: Config) {
 export async function install(argv: string[], { dir }: Config) {
   if (isCI) return;
 
-  await run(PATHS.husky, ["install", configHusky], {
+  await run(PATHS.husky, ["install", join(configDir, "husky")], {
     cwd: dir,
     name: "husky",
   });
@@ -267,6 +282,7 @@ export const scripts = {
  * Configuration schema object for validation.
  */
 const configSchema = object({
+  react: boolean().optional(),
   src: array(string()).optional(),
   dist: array(string()).optional(),
   project: array(string()).optional(),
@@ -276,6 +292,7 @@ const configSchema = object({
  * Configuration object.
  */
 export interface Config {
+  react: boolean;
   dir: string;
   src: string[];
   dist: string[];
@@ -289,11 +306,12 @@ export async function getConfig(cwd: string): Promise<Config> {
   const config = await pkgConf("ts-scripts", { cwd });
   const dir = dirname(pkgConf.filepath(config) || cwd);
   const {
+    react = false,
     src = ["src"],
     dist = ["dist"],
     project = ["tsconfig.json"],
   } = configSchema.parse(config);
-  return { dir, src, dist, project };
+  return { react, dir, src, dist, project };
 }
 
 export interface Options {
