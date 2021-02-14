@@ -16,6 +16,33 @@ const configJest = join(configDir, "jest.js");
 const configHusky = join(configDir, "husky");
 
 /**
+ * Paths to node.js CLIs in use.
+ */
+const PATHS = {
+  get prettier() {
+    return require.resolve("prettier/bin-prettier.js");
+  },
+  get eslint() {
+    return require.resolve("eslint/bin/eslint.js");
+  },
+  get rimraf() {
+    return require.resolve("rimraf/bin.js");
+  },
+  get typescript() {
+    return require.resolve("typescript/bin/tsc");
+  },
+  get lintStaged() {
+    return require.resolve("lint-staged/bin/lint-staged.js");
+  },
+  get jest() {
+    return require.resolve("jest/bin/jest.js");
+  },
+  get husky() {
+    return require.resolve("husky/lib/bin.js");
+  },
+} as const;
+
+/**
  * Get a value from an object by key.
  */
 function get<K extends PropertyKey, T>(
@@ -29,22 +56,18 @@ function get<K extends PropertyKey, T>(
  * Run command configuration.
  */
 interface RunOptions {
-  name?: string;
+  name: string;
   cwd: string;
 }
 
 /**
  * Spawn a CLI command process.
  */
-function run(
-  command: string,
-  args: string[] = [],
-  { name = command, cwd }: RunOptions
-) {
+function run(path: string, args: string[] = [], { name, cwd }: RunOptions) {
   console.log(`> Running "${name}"...`);
 
   return new Promise<void>((resolve, reject) => {
-    const process = spawn(command, args, { stdio: "inherit", cwd });
+    const process = spawn("node", [path, ...args], { stdio: "inherit", cwd });
     process.on("error", (err) => reject(err));
     process.on("close", (code, signal) => {
       if (code) return reject(new Error(`"${name}" exited with ${code}`));
@@ -77,17 +100,17 @@ export async function build(argv: string[], { dir, dist, project }: Config) {
 
   if (!noClean)
     await run(
-      "rimraf",
+      PATHS.rimraf,
       args(
         dist,
         project.map((x) => x.replace(/\.json$/, ".tsbuildinfo"))
       ),
-      { cwd: dir }
+      { cwd: dir, name: "rimraf" }
     );
 
   // Run each project in sequence.
   for (const tsconfigPath of project) {
-    await run("tsc", ["--project", tsconfigPath], {
+    await run(PATHS.typescript, ["--project", tsconfigPath], {
       name: `tsc \`${tsconfigPath}\``,
       cwd: dir,
     });
@@ -98,17 +121,10 @@ export async function build(argv: string[], { dir, dist, project }: Config) {
  * Run the pre-commit hook to lint/fix any code automatically.
  */
 export async function preCommit(argv: string[], { dir }: Config) {
-  const path = require.resolve("lint-staged");
-
-  await run(
-    "node",
-    [
-      resolve(dirname(path), "../bin/lint-staged.js"),
-      "--config",
-      configLintStaged,
-    ],
-    { name: "lint-staged", cwd: dir }
-  );
+  await run(PATHS.lintStaged, ["--config", configLintStaged], {
+    name: "lint-staged",
+    cwd: dir,
+  });
 }
 
 /**
@@ -143,8 +159,9 @@ export async function lint(argv: string[], config: Config) {
   );
 
   const eslintPaths = getEslintPaths(_, filterPaths, config);
-  await run("eslint", ["--fix", "--config", configEslint, ...eslintPaths], {
+  await run(PATHS.eslint, ["--fix", "--config", configEslint, ...eslintPaths], {
     cwd: config.dir,
+    name: "eslint --fix",
   });
 }
 
@@ -153,10 +170,16 @@ export async function lint(argv: string[], config: Config) {
  */
 export async function check(argv: string[], { src, dir }: Config) {
   const eslintPaths = src.map((x) => posix.join(x, `**/${eslintGlob}`));
-  await run("eslint", ["--config", configEslint, ...eslintPaths], { cwd: dir });
+  await run(PATHS.eslint, ["--config", configEslint, ...eslintPaths], {
+    cwd: dir,
+    name: "eslint",
+  });
 
   const prettierPaths = src.map((x) => posix.join(x, `**/${prettierGlob}`));
-  await run("prettier", ["--check", ...prettierPaths], { cwd: dir });
+  await run(PATHS.prettier, ["--check", ...prettierPaths], {
+    cwd: dir,
+    name: "prettier --check",
+  });
 }
 
 /**
@@ -183,7 +206,7 @@ export async function specs(argv: string[], { src, dir }: Config) {
   );
 
   await run(
-    "jest",
+    PATHS.jest,
     args(
       "--coverage",
       ["--config", configJest],
@@ -193,7 +216,7 @@ export async function specs(argv: string[], { src, dir }: Config) {
       updateSnapshot && "--update-snapshot",
       paths
     ),
-    { cwd: dir }
+    { cwd: dir, name: "jest" }
   );
 }
 
@@ -208,14 +231,22 @@ export async function format(argv: string[], { dir, src }: Config) {
     for (const dir of src) paths.push(posix.join(dir, `**/${prettierGlob}`));
   }
 
-  await run("prettier", ["--write", ...paths], { cwd: dir });
+  await run(PATHS.prettier, ["--write", ...paths], {
+    cwd: dir,
+    name: "prettier --write",
+  });
 }
 
 /**
  * Install any configuration needed for `ts-scripts` to work.
  */
 export async function install(argv: string[], { dir }: Config) {
-  if (!isCI) await run("husky", ["install", configHusky], { cwd: dir });
+  if (isCI) return;
+
+  await run(PATHS.husky, ["install", configHusky], {
+    cwd: dir,
+    name: "husky",
+  });
 }
 
 /**
