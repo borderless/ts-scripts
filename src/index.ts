@@ -30,7 +30,7 @@ function get<K extends PropertyKey, T>(
  */
 interface RunOptions {
   name?: string;
-  cwd?: string;
+  cwd: string;
 }
 
 /**
@@ -39,7 +39,7 @@ interface RunOptions {
 function run(
   command: string,
   args: string[] = [],
-  { name = command, cwd }: RunOptions = {}
+  { name = command, cwd }: RunOptions
 ) {
   console.log(`> Running "${name}"...`);
 
@@ -72,7 +72,7 @@ function args(...values: Array<string | string[] | false | undefined>) {
 /**
  * Build the project using `tsc`.
  */
-export async function build(argv: string[], { dist, project }: Config) {
+export async function build(argv: string[], { dir, dist, project }: Config) {
   const { "--no-clean": noClean } = arg({ "--no-clean": Boolean }, { argv });
 
   if (!noClean)
@@ -81,13 +81,15 @@ export async function build(argv: string[], { dist, project }: Config) {
       args(
         dist,
         project.map((x) => x.replace(/\.json$/, ".tsbuildinfo"))
-      )
+      ),
+      { cwd: dir }
     );
 
   // Run each project in sequence.
   for (const tsconfigPath of project) {
     await run("tsc", ["--project", tsconfigPath], {
       name: `tsc \`${tsconfigPath}\``,
+      cwd: dir,
     });
   }
 }
@@ -95,7 +97,7 @@ export async function build(argv: string[], { dist, project }: Config) {
 /**
  * Run the pre-commit hook to lint/fix any code automatically.
  */
-export async function preCommit() {
+export async function preCommit(argv: string[], { dir }: Config) {
   const path = require.resolve("lint-staged");
 
   await run(
@@ -105,7 +107,7 @@ export async function preCommit() {
       "--config",
       configLintStaged,
     ],
-    { name: "lint-staged" }
+    { name: "lint-staged", cwd: dir }
   );
 }
 
@@ -141,18 +143,20 @@ export async function lint(argv: string[], config: Config) {
   );
 
   const eslintPaths = getEslintPaths(_, filterPaths, config);
-  await run("eslint", ["--fix", "--config", configEslint, ...eslintPaths]);
+  await run("eslint", ["--fix", "--config", configEslint, ...eslintPaths], {
+    cwd: config.dir,
+  });
 }
 
 /**
  * Run checks intended for CI, basically linting/formatting without auto-fixing.
  */
-export async function check(argv: string[], { src }: Config) {
+export async function check(argv: string[], { src, dir }: Config) {
   const eslintPaths = src.map((x) => posix.join(x, `**/${eslintGlob}`));
-  await run("eslint", ["--config", configEslint, ...eslintPaths]);
+  await run("eslint", ["--config", configEslint, ...eslintPaths], { cwd: dir });
 
   const prettierPaths = src.map((x) => posix.join(x, `**/${prettierGlob}`));
-  await run("prettier", ["--check", ...prettierPaths]);
+  await run("prettier", ["--check", ...prettierPaths], { cwd: dir });
 }
 
 /**
@@ -167,7 +171,7 @@ export async function test(argv: string[], config: Config) {
 /**
  * Run specs using `jest`.
  */
-export async function specs(argv: string[], { src }: Config) {
+export async function specs(argv: string[], { src, dir }: Config) {
   const {
     _: paths,
     "--watch": watch,
@@ -188,14 +192,15 @@ export async function specs(argv: string[], { src }: Config) {
       watch && "--watch",
       updateSnapshot && "--update-snapshot",
       paths
-    )
+    ),
+    { cwd: dir }
   );
 }
 
 /**
  * Format code using `prettier`.
  */
-export async function format(argv: string[], { src }: Config) {
+export async function format(argv: string[], { dir, src }: Config) {
   const { _: paths } = arg({}, { argv });
 
   if (!paths.length) {
@@ -203,7 +208,7 @@ export async function format(argv: string[], { src }: Config) {
     for (const dir of src) paths.push(posix.join(dir, `**/${prettierGlob}`));
   }
 
-  await run("prettier", ["--write", ...paths]);
+  await run("prettier", ["--write", ...paths], { cwd: dir });
 }
 
 /**
@@ -249,7 +254,7 @@ export interface Config {
 /**
  * Load `ts-scripts` configuration.
  */
-export async function getConfig(cwd: string = process.cwd()): Promise<Config> {
+export async function getConfig(cwd: string): Promise<Config> {
   const config = await pkgConf("ts-scripts", { cwd });
   const dir = dirname(pkgConf.filepath(config) || cwd);
   const {
@@ -267,7 +272,7 @@ export interface Options {
 /**
  * Main script runtime.
  */
-export async function main(args: string[], { cwd }: Options) {
+export async function main(args: string[], { cwd = process.cwd() }: Options) {
   const [command, ...flags] = args;
   const script = get(scripts, command);
 

@@ -3,8 +3,8 @@
 import arg from "arg";
 import { main } from "./index";
 
-const { _: args, "--help": help, "--npm-start-dir": npmStartDir } = arg(
-  { "--help": Boolean, "--npm-start-dir": Boolean },
+const { _: args, "--help": help } = arg(
+  { "--help": Boolean },
   { stopAtPositional: true }
 );
 
@@ -15,9 +15,7 @@ if (help || args.length === 0) {
   process.exit(0);
 }
 
-main(args, {
-  cwd: (npmStartDir && process.env.npm_start_dir) || undefined,
-}).catch((err) => {
+main(args, { cwd: process.cwd() }).catch((err) => {
   console.error(err);
   process.exit(1);
 });

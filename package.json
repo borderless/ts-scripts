@@ -17,10 +17,7 @@
     "build": "ts-node src/bin.ts build",
     "specs": "ts-node src/bin.ts specs",
     "test": "ts-node src/bin.ts test",
-    "prepare": "npm run -s build",
-    "prepublishOnly": "pinst --enable",
-    "postpublish": "pinst --disable",
-    "_postinstall": "node dist/bin.js --npm-start-dir install"
+    "prepare": "ts-node src/bin.ts install && ts-node src/bin.ts build"
   },
   "repository": {
     "type": "git",
@@ -51,7 +48,6 @@
   "devDependencies": {
     "@types/jest": "^26.0.20",
     "@types/node": "^14.14.27",
-    "pinst": "^2.1.4",
     "ts-node": "^9.1.1",
     "typescript": "4.1.5"
   },

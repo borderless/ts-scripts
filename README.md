@@ -22,14 +22,14 @@ In your `package.json` you can use the scripts:
     "format": "ts-scripts format",
     "specs": "ts-scripts specs",
     "test": "ts-scripts test",
-    "prepare": "ts-scripts build"
+    "prepare": "ts-scripts install && ts-scripts build"
   }
 }
 ```
 
 ### Batteries Included
 
-- Automatically installs a `pre-commit` hook
+- `install` - Installs `husky` and `lint-staged`
 - `lint` - Uses `eslint --fix`
 - `format` - Uses `prettier --write`
 - `specs` - Uses `jest`
