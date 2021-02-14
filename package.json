@@ -17,9 +17,8 @@
     "build": "ts-node src/bin.ts build",
     "specs": "ts-node src/bin.ts specs",
     "test": "ts-node src/bin.ts test",
-    "preinstall": "npm run -s build",
-    "postinstall": "node dist/bin.js install",
-    "prepublishOnly": "npm run -s build"
+    "prepare": "npm run -s build",
+    "postinstall": "husky install configs/husky"
   },
   "repository": {
     "type": "git",

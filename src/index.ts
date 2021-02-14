@@ -194,13 +194,6 @@ export async function format(argv: string[], { src }: Config) {
 }
 
 /**
- * Install any configuration needed for `ts-scripts` to work.
- */
-export async function install() {
-  if (!isCI) await run("husky", ["install", configHusky]);
-}
-
-/**
  * Supported scripts.
  */
 export const scripts = {
@@ -211,7 +204,6 @@ export const scripts = {
   test: test,
   lint: lint,
   check: check,
-  install: install,
 } as const;
 
 /**
