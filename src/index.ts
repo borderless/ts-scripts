@@ -27,13 +27,25 @@ function get<K extends PropertyKey, T>(
 }
 
 /**
+ * Run command configuration.
+ */
+interface RunOptions {
+  name?: string;
+  cwd?: string;
+}
+
+/**
  * Spawn a CLI command process.
  */
-function run(command: string, args: string[] = [], name = command) {
+function run(
+  command: string,
+  args: string[] = [],
+  { name = command, cwd = process.cwd() }: RunOptions = {}
+) {
   console.log(`> Running "${name}"...`);
 
   return new Promise<void>((resolve, reject) => {
-    const process = spawn(command, args, { stdio: "inherit" });
+    const process = spawn(command, args, { stdio: "inherit", cwd });
     process.on("error", (err) => reject(err));
     process.on("close", (code, signal) => {
       if (code) return reject(new Error(`"${name}" exited with ${code}`));
@@ -75,7 +87,9 @@ export async function build(argv: string[], { dist, project }: Config) {
 
   // Run each project in sequence.
   for (const tsconfigPath of project) {
-    await run("tsc", ["--project", tsconfigPath], `tsc \`${tsconfigPath}\``);
+    await run("tsc", ["--project", tsconfigPath], {
+      name: `tsc \`${tsconfigPath}\``,
+    });
   }
 }
 
@@ -92,7 +106,7 @@ export async function preCommit() {
       "--config",
       configLintStaged,
     ],
-    "lint-staged"
+    { name: "lint-staged" }
   );
 }
 
@@ -194,6 +208,13 @@ export async function format(argv: string[], { src }: Config) {
 }
 
 /**
+ * Install any configuration needed for `ts-scripts` to work.
+ */
+export async function install(argv: string[], { dir }: Config) {
+  if (!isCI) await run("husky", ["install", configHusky], { cwd: dir });
+}
+
+/**
  * Supported scripts.
  */
 export const scripts = {
@@ -204,6 +225,7 @@ export const scripts = {
   test: test,
   lint: lint,
   check: check,
+  install: install,
 } as const;
 
 /**
