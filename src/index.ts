@@ -1,6 +1,6 @@
 import arg from "arg";
 import pkgConf from "pkg-conf";
-import isCI from "is-ci";
+import { isCI } from "ci-info";
 import { spawn } from "child_process";
 import { resolve, join, posix, dirname, relative } from "path";
 import { object, string, array, boolean } from "zod";

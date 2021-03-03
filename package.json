@@ -46,11 +46,10 @@
     "node": ">=10"
   },
   "devDependencies": {
-    "@types/is-ci": "^2.0.0",
     "@types/jest": "^26.0.20",
     "@types/node": "^14.14.27",
     "ts-node": "^9.1.1",
-    "typescript": "4.1.5"
+    "typescript": "4.2.2"
   },
   "peerDependencies": {
     "typescript": "*"
@@ -59,11 +58,11 @@
     "@typescript-eslint/eslint-plugin": "^4.15.0",
     "@typescript-eslint/parser": "^4.15.0",
     "arg": "^5.0.0",
+    "ci-info": "^3.1.1",
     "eslint": "^7.20.0",
-    "eslint-config-prettier": "^7.2.0",
+    "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-react": "^7.22.0",
     "husky": "^5.0.9",
-    "is-ci": "^2.0.0",
     "jest": "^26.6.3",
     "lint-staged": "^10.0.8",
     "pkg-conf": "^3.1.0",
