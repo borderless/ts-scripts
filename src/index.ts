@@ -212,11 +212,16 @@ export async function test(argv: string[], config: Config) {
 export async function specs(argv: string[], { src, dir }: Config) {
   const {
     _: paths,
-    "--watch": watch,
     "--ci": ci = isCI,
     "--update-snapshot": updateSnapshot,
+    "--watch": watch,
   } = arg(
-    { "--watch": Boolean, "--update-snapshot": Boolean, "--ci": Boolean },
+    {
+      "--ci": Boolean,
+      "--update-snapshot": Boolean,
+      "--watch": Boolean,
+      "-u": "--update-snapshot",
+    },
     { argv }
   );
 
