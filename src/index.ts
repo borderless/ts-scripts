@@ -202,7 +202,7 @@ export async function check(argv: string[], config: Config) {
  */
 export async function test(argv: string[], config: Config) {
   await check([], config);
-  await specs(["--ci"], config);
+  await specs(["--ci", "--coverage"], config);
   await build(["--no-clean"], config);
 }
 
@@ -213,13 +213,23 @@ export async function specs(argv: string[], { src, dir }: Config) {
   const {
     _: paths,
     "--ci": ci = isCI,
+    "--coverage": coverage,
+    "--only-changed": onlyChanged,
+    "--test-pattern": testPattern,
     "--update-snapshot": updateSnapshot,
+    "--watch-all": watchAll,
     "--watch": watch,
   } = arg(
     {
       "--ci": Boolean,
+      "--coverage": Boolean,
+      "--only-changed": Boolean,
+      "--test-pattern": String,
       "--update-snapshot": Boolean,
+      "--watch-all": Boolean,
       "--watch": Boolean,
+      "-o": "--only-changed",
+      "-t": "--test-pattern",
       "-u": "--update-snapshot",
     },
     { argv }
@@ -228,12 +238,15 @@ export async function specs(argv: string[], { src, dir }: Config) {
   await run(
     PATHS.jest,
     args(
-      "--coverage",
       ["--config", join(configDir, "jest.js")],
       ...src.map((x) => ["--roots", posix.join("<rootDir>", x)]),
       ci && "--ci",
-      watch && "--watch",
+      coverage && "--coverage",
+      onlyChanged && "--only-changed",
+      testPattern && ["--test-name-pattern", testPattern],
       updateSnapshot && "--update-snapshot",
+      watch && "--watch",
+      watchAll && "--watch-all",
       paths
     ),
     { cwd: dir, name: "jest" }
