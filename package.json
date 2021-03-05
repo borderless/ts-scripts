@@ -1,6 +1,6 @@
 {
   "name": "@borderless/ts-scripts",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Simple, mostly opinionated, scripts to build TypeScript modules",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
