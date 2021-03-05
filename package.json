@@ -12,6 +12,7 @@
     "dist/"
   ],
   "scripts": {
+    "check": "ts-node src/bin.ts check",
     "lint": "ts-node src/bin.ts lint",
     "format": "ts-node src/bin.ts format",
     "build": "ts-node src/bin.ts build",

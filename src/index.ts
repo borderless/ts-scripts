@@ -93,7 +93,12 @@ function args(...values: Array<string | string[] | false | undefined>) {
  * Build the project using `tsc`.
  */
 export async function build(argv: string[], { dir, dist, project }: Config) {
-  const { "--no-clean": noClean } = arg({ "--no-clean": Boolean }, { argv });
+  const { "--no-clean": noClean } = arg(
+    {
+      "--no-clean": Boolean,
+    },
+    { argv }
+  );
 
   if (!noClean)
     await run(
@@ -157,18 +162,21 @@ function getEslintConfig({ react }: Config) {
  * Lint the project using `eslint`.
  */
 export async function lint(argv: string[], config: Config) {
-  const { _, "--filter-paths": filterPaths = false } = arg(
-    { "--filter-paths": Boolean },
+  const { _, "--check": check, "--filter-paths": filterPaths = false } = arg(
+    {
+      "--filter-paths": Boolean,
+      "--check": Boolean,
+    },
     { argv }
   );
 
   const eslintPaths = getEslintPaths(_, filterPaths, config);
   await run(
     PATHS.eslint,
-    ["--fix", "--config", getEslintConfig(config), ...eslintPaths],
+    args(!check && "--fix", ["--config", getEslintConfig(config)], eslintPaths),
     {
       cwd: config.dir,
-      name: "eslint --fix",
+      name: "eslint",
     }
   );
 }
@@ -177,24 +185,8 @@ export async function lint(argv: string[], config: Config) {
  * Run checks intended for CI, basically linting/formatting without auto-fixing.
  */
 export async function check(argv: string[], config: Config) {
-  const eslintPaths = config.src.map((x) => posix.join(x, `**/${eslintGlob}`));
-  const prettierPaths = config.src.map((x) =>
-    posix.join(x, `**/${prettierGlob}`)
-  );
-
-  await run(
-    PATHS.eslint,
-    ["--config", getEslintConfig(config), ...eslintPaths],
-    {
-      cwd: config.dir,
-      name: "eslint",
-    }
-  );
-
-  await run(PATHS.prettier, ["--check", ...prettierPaths], {
-    cwd: config.dir,
-    name: "prettier --check",
-  });
+  await lint(["--check"], config);
+  await format(["--check"], config);
 }
 
 /**
@@ -257,17 +249,26 @@ export async function specs(argv: string[], { src, dir }: Config) {
  * Format code using `prettier`.
  */
 export async function format(argv: string[], { dir, src }: Config) {
-  const { _: paths } = arg({}, { argv });
+  const { _: paths, "--check": check } = arg(
+    {
+      "--check": Boolean,
+    },
+    { argv }
+  );
 
   if (!paths.length) {
     paths.push(prettierGlob);
     for (const dir of src) paths.push(posix.join(dir, `**/${prettierGlob}`));
   }
 
-  await run(PATHS.prettier, ["--write", ...paths], {
-    cwd: dir,
-    name: "prettier --write",
-  });
+  await run(
+    PATHS.prettier,
+    args(!check && "--write", check && "--check", paths),
+    {
+      cwd: dir,
+      name: "prettier",
+    }
+  );
 }
 
 /**
