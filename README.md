@@ -2,6 +2,8 @@
 
 [![NPM version][npm-image]][npm-url]
 [![NPM downloads][downloads-image]][downloads-url]
+[![Build status][build-image]][build-url]
+[![Build coverage][coverage-image]][coverage-url]
 
 > Simple, mostly opinionated, scripts to build TypeScript modules.
 
@@ -41,7 +43,11 @@ In your `package.json` you can use the scripts:
 
 MIT
 
-[npm-image]: https://img.shields.io/npm/v/@borderless/ts-scripts.svg?style=flat
+[npm-image]: https://img.shields.io/npm/v/@borderless/ts-scripts
 [npm-url]: https://npmjs.org/package/@borderless/ts-scripts
-[downloads-image]: https://img.shields.io/npm/dm/@borderless/ts-scripts.svg?style=flat
+[downloads-image]: https://img.shields.io/npm/dm/@borderless/ts-scripts
 [downloads-url]: https://npmjs.org/package/@borderless/ts-scripts
+[build-image]: https://img.shields.io/github/workflow/status/borderless/ts-scripts/CI/main
+[build-url]: https://github.com/borderless/ts-scripts/actions/workflows/ci.yml?query=branch%3Amain
+[coverage-image]: https://img.shields.io/codecov/c/gh/borderless/ts-scripts
+[coverage-url]: https://codecov.io/gh/borderless/ts-scripts
