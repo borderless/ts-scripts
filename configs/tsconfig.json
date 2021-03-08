@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2019",
     "lib": ["ES2019"],
-    "module": "commonjs",
+    "module": "ES2015",
     "moduleResolution": "node",
     "strict": true,
     "declaration": true,

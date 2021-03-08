@@ -24,7 +24,7 @@
     "ts-scripts": "dist/bin.js"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=12"
   },
   "scripts": {
     "build": "ts-node src/bin.ts build",
