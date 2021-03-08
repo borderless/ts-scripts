@@ -263,7 +263,12 @@ export async function format(argv: string[], { dir, src }: Config) {
 
   await run(
     PATHS.prettier,
-    args(!check && "--write", check && "--check", paths),
+    args(
+      ["--plugin", "prettier-plugin-package"],
+      !check && "--write",
+      check && "--check",
+      paths
+    ),
     {
       cwd: dir,
       name: "prettier",
