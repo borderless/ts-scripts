@@ -110,13 +110,11 @@ export async function build(argv: string[], { dir, dist, project }: Config) {
       { cwd: dir, name: "rimraf" }
     );
 
-  // Run each project in sequence.
-  for (const tsconfigPath of project) {
-    await run(PATHS.typescript, ["--project", tsconfigPath], {
-      name: `tsc \`${tsconfigPath}\``,
-      cwd: dir,
-    });
-  }
+  // Build all project references using `--build`.
+  await run(PATHS.typescript, ["-b", ...project], {
+    name: "tsc",
+    cwd: dir,
+  });
 }
 
 /**
