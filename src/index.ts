@@ -19,6 +19,9 @@ const PATHS = {
   get prettier() {
     return require.resolve("prettier/bin-prettier.js");
   },
+  get prettierPluginPackage() {
+    return require.resolve("prettier-plugin-package");
+  },
   get eslint() {
     return require.resolve("eslint/bin/eslint.js");
   },
@@ -277,7 +280,7 @@ export async function format(argv: string[], { dir, src }: Config) {
   await run(
     PATHS.prettier,
     args(
-      ["--plugin", "prettier-plugin-package"],
+      ["--plugin", PATHS.prettierPluginPackage],
       !check && "--write",
       check && "--check",
       paths
