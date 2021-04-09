@@ -1,7 +1,10 @@
 const { posix } = require("path");
+const { extensionsFromConfig } = require("../dist/common");
 
-/** @type {import("../src/common").Config} */
+/** @type {import("../src/index").Config} */
 const config = JSON.parse(process.env.TS_SCRIPTS_CONFIG || "{}");
+const extensions = extensionsFromConfig(config);
+const extensionRegexp = `\\.(?:${extensions.join("|")})$`;
 
 module.exports = {
   projects: config.test.map((test) => {
@@ -16,9 +19,9 @@ module.exports = {
         },
       },
       transform: {
-        "\\.[tj]sx?$": require.resolve("ts-jest"),
+        [extensionRegexp]: require.resolve("ts-jest"),
       },
-      testRegex: "(?:/__tests__/.*|\\.(?:test|spec))\\.[tj]sx?$",
+      testRegex: `(?:/__tests__/.*|\\.test|\\.spec)${extensionRegexp}`,
       moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
     };
 

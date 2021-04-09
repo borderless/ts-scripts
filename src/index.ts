@@ -4,7 +4,30 @@ import { isCI } from "ci-info";
 import { spawn } from "child_process";
 import { resolve, join, posix, dirname, relative } from "path";
 import { object, string, array, boolean } from "zod";
-import { eslintGlob, prettierGlob, Config } from "./common";
+import { extensionsFromConfig } from "./common";
+
+/**
+ * Test configuration object.
+ */
+export interface Test {
+  name: string | undefined;
+  dir: string[] | undefined;
+  env: string;
+  project: string;
+}
+
+/**
+ * Configuration object.
+ */
+export interface Config {
+  js: boolean;
+  react: boolean;
+  dir: string;
+  src: string[];
+  dist: string[];
+  project: string[];
+  test: Test[];
+}
 
 /**
  * Configuration files.
@@ -58,19 +81,28 @@ function get<K extends PropertyKey, T>(
 interface RunOptions {
   name: string;
   config: Config;
+  env?: Record<string, string>;
 }
 
 /**
  * Spawn a CLI command process.
  */
-function run(path: string, args: string[] = [], { name, config }: RunOptions) {
+function run(
+  path: string,
+  args: string[] = [],
+  { name, config, env }: RunOptions
+) {
   console.log(`> Running "${name}"...`);
 
   return new Promise<void>((resolve, reject) => {
     const child = spawn("node", [path, ...args], {
       stdio: "inherit",
       cwd: config.dir,
-      env: { ...process.env, TS_SCRIPTS_CONFIG: JSON.stringify(config) },
+      env: {
+        ...process.env,
+        ...env,
+        TS_SCRIPTS_CONFIG: JSON.stringify(config),
+      },
     });
 
     child.on("error", (err) => reject(err));
@@ -80,6 +112,18 @@ function run(path: string, args: string[] = [], { name, config }: RunOptions) {
       return resolve();
     });
   });
+}
+
+/** Prettier supported glob files. */
+function prettierGlob(config: Config) {
+  return "*.{js,jsx,ts,tsx,json,css,md,yml,yaml}";
+}
+
+/** ESLint supported glob files. */
+function eslintGlob(config: Config) {
+  const exts = extensionsFromConfig(config);
+  if (exts.length > 1) return `*.{${exts.join(",")}}`;
+  return `*.${exts[0]}`;
 }
 
 /**
@@ -132,23 +176,23 @@ export async function preCommit(argv: string[], config: Config) {
   await run(PATHS.lintStaged, ["--config", configLintStaged], {
     name: "lint-staged",
     config,
+    env: {
+      TS_SCRIPTS_LINT_GLOB: eslintGlob(config),
+      TS_SCRIPTS_FORMAT_GLOB: prettierGlob(config),
+    },
   });
 }
 
 /**
  * Resolve ESLint paths for linting.
  */
-function getEslintPaths(
-  paths: string[],
-  filter: boolean,
-  { dir, src }: Config
-) {
+function getEslintPaths(paths: string[], filter: boolean, config: Config) {
   if (!paths.length) {
-    return src.map((x) => posix.join(x, `**/${eslintGlob}`));
+    return config.src.map((x) => posix.join(x, `**/${eslintGlob(config)}`));
   }
 
   if (filter) {
-    const fullSrc = src.map((x) => resolve(dir, x));
+    const fullSrc = config.src.map((x) => resolve(config.dir, x));
     return paths.filter((path) =>
       fullSrc.some((src) => !relative(src, path).startsWith(".."))
     );
@@ -277,11 +321,9 @@ export async function format(argv: string[], config: Config) {
   );
 
   if (!paths.length) {
-    paths.push(prettierGlob);
-
-    for (const dir of config.src) {
-      paths.push(posix.join(dir, `**/${prettierGlob}`));
-    }
+    const glob = prettierGlob(config);
+    paths.push(glob);
+    for (const dir of config.src) paths.push(posix.join(dir, `**/${glob}`));
   }
 
   await run(
@@ -329,6 +371,7 @@ export const scripts = {
  * Configuration schema object for validation.
  */
 const configSchema = object({
+  js: boolean().optional(),
   react: boolean().optional(),
   src: array(string()).optional(),
   dist: array(string()).optional(),
@@ -351,6 +394,7 @@ export async function getConfig(cwd: string): Promise<Config> {
   const schema = configSchema.parse(config);
 
   return {
+    js: schema.js ?? false,
     react: schema.react ?? false,
     dir: dirname(pkgConf.filepath(config) ?? cwd),
     src: schema.src ?? ["src"],

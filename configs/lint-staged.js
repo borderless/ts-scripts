@@ -1,5 +1,4 @@
 const { join, basename } = require("path");
-const { eslintGlob, prettierGlob } = require("../dist/common.js");
 
 const script =
   basename(join(__dirname, "..", "..")) === "node_modules"
@@ -7,6 +6,6 @@ const script =
     : `node '${require.resolve("../dist/bin.js")}'`;
 
 module.exports = {
-  [eslintGlob]: `${script} lint --filter-paths`,
-  [prettierGlob]: `${script} format`,
+  [process.env.TS_SCRIPTS_LINT_GLOB]: `${script} lint --filter-paths`,
+  [process.env.TS_SCRIPTS_FORMAT_GLOB]: `${script} format`,
 };
