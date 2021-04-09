@@ -39,6 +39,20 @@ In your `package.json` you can use the scripts:
 - `check` - Uses `eslint` and `prettier --check`
 - `test` - Runs `check`, `specs`, and `build`
 
+### Configuration
+
+Configuration can get specified in your `package.json` file under `ts-scripts`:
+
+- `react` - Enables react.js extensions for linting and formatting (default: `false`)
+- `src` - An array of source directories to read (default: `["src"]`)
+- `dist` - An array of output directories to clean, i.e. `outDir` in `tsconfig.json` (default: `["dist"]`)
+- `project` An array of `tsconfig.json` project files for TypeScript (default: `["tsconfig.json"]`)
+- `test` An array of test configuration objects (default: `[{}]`)
+  - `name` The name of this test configuration (default: `undefined`)
+  - `dir` An array of directories to read tests from (default: `src`)
+  - `env` The environment to use for these tests (default: `"node"`)
+  - `project` The `tsconfig.json` project file to use for this test (default: `"tsconfig.json"`)
+
 ## License
 
 MIT
