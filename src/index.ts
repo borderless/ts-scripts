@@ -4,7 +4,7 @@ import { isCI } from "ci-info";
 import { spawn } from "child_process";
 import { resolve, join, posix, dirname, relative } from "path";
 import { object, string, array, boolean } from "zod";
-import { eslintGlob, prettierGlob } from "./common";
+import { eslintGlob, prettierGlob, Config } from "./common";
 
 /**
  * Configuration files.
@@ -57,19 +57,24 @@ function get<K extends PropertyKey, T>(
  */
 interface RunOptions {
   name: string;
-  cwd: string;
+  config: Config;
 }
 
 /**
  * Spawn a CLI command process.
  */
-function run(path: string, args: string[] = [], { name, cwd }: RunOptions) {
+function run(path: string, args: string[] = [], { name, config }: RunOptions) {
   console.log(`> Running "${name}"...`);
 
   return new Promise<void>((resolve, reject) => {
-    const process = spawn("node", [path, ...args], { stdio: "inherit", cwd });
-    process.on("error", (err) => reject(err));
-    process.on("close", (code, signal) => {
+    const child = spawn("node", [path, ...args], {
+      stdio: "inherit",
+      cwd: config.dir,
+      env: { ...process.env, TS_SCRIPTS_CONFIG: JSON.stringify(config) },
+    });
+
+    child.on("error", (err) => reject(err));
+    child.on("close", (code, signal) => {
       if (code) return reject(new Error(`"${name}" exited with ${code}`));
       if (signal) return reject(new Error(`"${name}" exited with ${signal}`));
       return resolve();
@@ -95,7 +100,7 @@ function args(...values: Array<string | string[] | false | undefined>) {
 /**
  * Build the project using `tsc`.
  */
-export async function build(argv: string[], { dir, dist, project }: Config) {
+export async function build(argv: string[], config: Config) {
   const { "--no-clean": noClean } = arg(
     {
       "--no-clean": Boolean,
@@ -107,26 +112,26 @@ export async function build(argv: string[], { dir, dist, project }: Config) {
     await run(
       PATHS.rimraf,
       args(
-        dist,
-        project.map((x) => x.replace(/\.json$/, ".tsbuildinfo"))
+        config.dist,
+        config.project.map((x) => x.replace(/\.json$/, ".tsbuildinfo"))
       ),
-      { cwd: dir, name: "rimraf" }
+      { config, name: "rimraf" }
     );
 
   // Build all project references using `--build`.
-  await run(PATHS.typescript, ["-b", ...project], {
+  await run(PATHS.typescript, ["-b", ...config.project], {
     name: "tsc",
-    cwd: dir,
+    config,
   });
 }
 
 /**
  * Run the pre-commit hook to lint/fix any code automatically.
  */
-export async function preCommit(argv: string[], { dir }: Config) {
+export async function preCommit(argv: string[], config: Config) {
   await run(PATHS.lintStaged, ["--config", configLintStaged], {
     name: "lint-staged",
-    cwd: dir,
+    config,
   });
 }
 
@@ -176,8 +181,8 @@ export async function lint(argv: string[], config: Config) {
     PATHS.eslint,
     args(!check && "--fix", ["--config", getEslintConfig(config)], eslintPaths),
     {
-      cwd: config.dir,
       name: "eslint",
+      config,
     }
   );
 }
@@ -210,7 +215,7 @@ export async function test(argv: string[], config: Config) {
 /**
  * Run specs using `jest`.
  */
-export async function specs(argv: string[], { src, dir }: Config) {
+export async function specs(argv: string[], config: Config) {
   const {
     _: paths,
     "--ci": ci = isCI,
@@ -245,7 +250,6 @@ export async function specs(argv: string[], { src, dir }: Config) {
     PATHS.jest,
     args(
       ["--config", join(configDir, "jest.js")],
-      ...src.map((x) => ["--roots", posix.join("<rootDir>", x)]),
       ci && "--ci",
       coverage && "--coverage",
       detectOpenHandles && "--detect-open-handles",
@@ -257,14 +261,14 @@ export async function specs(argv: string[], { src, dir }: Config) {
       watchAll && "--watch-all",
       paths
     ),
-    { cwd: dir, name: "jest" }
+    { name: "jest", config }
   );
 }
 
 /**
  * Format code using `prettier`.
  */
-export async function format(argv: string[], { dir, src }: Config) {
+export async function format(argv: string[], config: Config) {
   const { _: paths, "--check": check } = arg(
     {
       "--check": Boolean,
@@ -274,7 +278,10 @@ export async function format(argv: string[], { dir, src }: Config) {
 
   if (!paths.length) {
     paths.push(prettierGlob);
-    for (const dir of src) paths.push(posix.join(dir, `**/${prettierGlob}`));
+
+    for (const dir of config.src) {
+      paths.push(posix.join(dir, `**/${prettierGlob}`));
+    }
   }
 
   await run(
@@ -286,8 +293,8 @@ export async function format(argv: string[], { dir, src }: Config) {
       paths
     ),
     {
-      cwd: dir,
       name: "prettier",
+      config,
     }
   );
 }
@@ -295,12 +302,12 @@ export async function format(argv: string[], { dir, src }: Config) {
 /**
  * Install any configuration needed for `ts-scripts` to work.
  */
-export async function install(argv: string[], { dir }: Config) {
+export async function install(argv: string[], config: Config) {
   if (isCI) return;
 
   await run(PATHS.husky, ["install", join(configDir, "husky")], {
-    cwd: dir,
     name: "husky",
+    config,
   });
 }
 
@@ -326,34 +333,41 @@ const configSchema = object({
   src: array(string()).optional(),
   dist: array(string()).optional(),
   project: array(string()).optional(),
+  test: array(
+    object({
+      name: string().optional(),
+      env: string().optional(),
+      dir: array(string()).optional(),
+      project: string().optional(),
+    })
+  ).optional(),
 });
-
-/**
- * Configuration object.
- */
-export interface Config {
-  react: boolean;
-  dir: string;
-  src: string[];
-  dist: string[];
-  project: string[];
-}
 
 /**
  * Load `ts-scripts` configuration.
  */
 export async function getConfig(cwd: string): Promise<Config> {
   const config = await pkgConf("ts-scripts", { cwd });
-  const dir = dirname(pkgConf.filepath(config) || cwd);
-  const {
-    react = false,
-    src = ["src"],
-    dist = ["dist"],
-    project = ["tsconfig.json"],
-  } = configSchema.parse(config);
-  return { react, dir, src, dist, project };
+  const schema = configSchema.parse(config);
+
+  return {
+    react: schema.react ?? false,
+    dir: dirname(pkgConf.filepath(config) ?? cwd),
+    src: schema.src ?? ["src"],
+    dist: schema.dist ?? ["dist"],
+    project: schema.project ?? ["tsconfig.json"],
+    test: (schema.test ?? [{}]).map((testSchema) => ({
+      name: testSchema.name,
+      dir: testSchema.dir,
+      env: testSchema.env ?? "node",
+      project: testSchema.project ?? "tsconfig.json",
+    })),
+  };
 }
 
+/**
+ * Main configuration options.
+ */
 export interface Options {
   cwd?: string;
 }
