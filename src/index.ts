@@ -3,7 +3,7 @@ import pkgConf from "pkg-conf";
 import { isCI } from "ci-info";
 import { spawn } from "child_process";
 import { resolve, join, posix, dirname, relative } from "path";
-import { object, string, array, boolean } from "zod";
+import { object, string, array, boolean, union, ZodType } from "zod";
 import { extensionsFromConfig } from "./common";
 
 /**
@@ -368,19 +368,33 @@ export const scripts = {
 } as const;
 
 /**
+ * Allow array or string values for schema entries.
+ */
+const arrayifySchema = <T extends ZodType<unknown>>(value: T) => {
+  return union([value, array(value)]);
+};
+
+/**
+ * Convert value into array format.
+ */
+const arrayify = <T>(value: T | T[]) => {
+  return Array.isArray(value) ? value : [value];
+};
+
+/**
  * Configuration schema object for validation.
  */
 const configSchema = object({
   js: boolean().optional(),
   react: boolean().optional(),
-  src: array(string()).optional(),
-  dist: array(string()).optional(),
-  project: array(string()).optional(),
-  test: array(
+  src: arrayifySchema(string()).optional(),
+  dist: arrayifySchema(string()).optional(),
+  project: arrayifySchema(string()).optional(),
+  test: arrayifySchema(
     object({
       name: string().optional(),
       env: string().optional(),
-      dir: array(string()).optional(),
+      dir: arrayifySchema(string()).optional(),
       project: string().optional(),
     })
   ).optional(),
@@ -397,12 +411,12 @@ export async function getConfig(cwd: string): Promise<Config> {
     js: schema.js ?? false,
     react: schema.react ?? false,
     dir: dirname(pkgConf.filepath(config) ?? cwd),
-    src: schema.src ?? ["src"],
-    dist: schema.dist ?? ["dist"],
-    project: schema.project ?? ["tsconfig.json"],
-    test: (schema.test ?? [{}]).map((testSchema) => ({
+    src: arrayify(schema.src ?? "src"),
+    dist: arrayify(schema.dist ?? "dist"),
+    project: arrayify(schema.project ?? "tsconfig.json"),
+    test: arrayify(schema.test ?? {}).map((testSchema) => ({
       name: testSchema.name,
-      dir: testSchema.dir,
+      dir: testSchema.dir ? arrayify(testSchema.dir) : undefined,
       env: testSchema.env ?? "node",
       project: testSchema.project ?? "tsconfig.json",
     })),
