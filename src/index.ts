@@ -20,6 +20,7 @@ export interface Test {
  * Configuration object.
  */
 export interface Config {
+  debug: boolean;
   js: boolean;
   react: boolean;
   dir: string;
@@ -82,6 +83,7 @@ interface RunOptions {
   name: string;
   config: Config;
   env?: Record<string, string>;
+  debug?: boolean;
 }
 
 /**
@@ -93,6 +95,10 @@ function run(
   { name, config, env }: RunOptions
 ) {
   console.log(`> Running "${name}"...`);
+  if (config.debug) {
+    console.log(`> Path: ${JSON.stringify(path)}"`);
+    console.log(`> Args: ${JSON.stringify(args.join(" "))}`);
+  }
 
   return new Promise<void>((resolve, reject) => {
     const child = spawn("node", [path, ...args], {
@@ -385,6 +391,7 @@ const arrayify = <T>(value: T | T[]) => {
  * Configuration schema object for validation.
  */
 const configSchema = object({
+  debug: boolean().optional(),
   js: boolean().optional(),
   react: boolean().optional(),
   src: arrayifySchema(string()).optional(),
@@ -408,6 +415,7 @@ export async function getConfig(cwd: string): Promise<Config> {
   const schema = configSchema.parse(config);
 
   return {
+    debug: schema.debug ?? false,
     js: schema.js ?? false,
     react: schema.react ?? false,
     dir: dirname(pkgConf.filepath(config) ?? cwd),
