@@ -6,7 +6,9 @@ const config = JSON.parse(process.env.TS_SCRIPTS_CONFIG || "{}");
 const extensions = extensionsFromConfig(config);
 const extensionRegexp = `\\.(?:${extensions.join("|")})$`;
 
+/** @type {import("ts-jest/dist/types").InitialOptionsTsJest} */
 module.exports = {
+  rootDir: config.dir,
   projects: config.test.map((test) => {
     /** @type {import("ts-jest/dist/types").InitialOptionsTsJest} */
     const options = {
