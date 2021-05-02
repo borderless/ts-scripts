@@ -272,6 +272,7 @@ export async function specs(argv: string[], config: Config) {
     "--coverage": coverage,
     "--detect-open-handles": detectOpenHandles,
     "--force-exit": forceExit,
+    "--fail-with-no-tests": failWithNoTests,
     "--only-changed": onlyChanged,
     "--test-pattern": testPattern,
     "--update-snapshot": updateSnapshot,
@@ -283,6 +284,7 @@ export async function specs(argv: string[], config: Config) {
       "--coverage": Boolean,
       "--detect-open-handles": Boolean,
       "--force-exit": Boolean,
+      "--fail-with-no-tests": Boolean,
       "--only-changed": Boolean,
       "--test-pattern": String,
       "--update-snapshot": Boolean,
@@ -300,6 +302,7 @@ export async function specs(argv: string[], config: Config) {
     PATHS.jest,
     args(
       ["--config", join(configDir, "jest.js")],
+      !failWithNoTests && "--passWithNoTests",
       ci && "--ci",
       coverage && "--coverage",
       detectOpenHandles && "--detect-open-handles",
