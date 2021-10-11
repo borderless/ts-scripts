@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import arg from "arg";
-import { main } from "./index";
+import { main } from "./index.js";
 
 const { _: args, "--help": help } = arg(
   { "--help": Boolean },

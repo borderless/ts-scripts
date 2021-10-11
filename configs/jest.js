@@ -1,10 +1,9 @@
 const { posix } = require("path");
-const { extensionsFromConfig } = require("../dist/common");
 
 /** @type {import("../src/index").Config} */
 const config = JSON.parse(process.env.TS_SCRIPTS_CONFIG || "{}");
-const extensions = extensionsFromConfig(config);
-const extensionRegexp = `\\.(?:${extensions.join("|")})$`;
+const extensions = process.env.TS_SCRIPTS_EXTENSIONS || "";
+const extensionRegexp = `\\.(?:${extensions})$`;
 
 /** @type {import("ts-jest/dist/types").InitialOptionsTsJest} */
 module.exports = {
@@ -15,9 +14,11 @@ module.exports = {
       rootDir: config.dir,
       roots: (test.dir || config.src).map((x) => posix.join("<rootDir>", x)),
       testEnvironment: test.env,
+      extensionsToTreatAsEsm: [".jsx", ".ts", ".tsx"],
       globals: {
         "ts-jest": {
           tsconfig: test.project,
+          useESM: true,
         },
       },
       transform: {

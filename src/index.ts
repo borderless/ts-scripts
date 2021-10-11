@@ -1,10 +1,11 @@
 import arg from "arg";
-import pkgConf from "pkg-conf";
+import { packageConfig, packageJsonPath } from "pkg-conf";
 import { isCI } from "ci-info";
 import { spawn } from "child_process";
 import { resolve, join, posix, dirname, relative } from "path";
+import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { object, string, array, boolean, union, ZodType } from "zod";
-import { extensionsFromConfig } from "./common";
 
 /**
  * Test configuration object.
@@ -33,7 +34,9 @@ export interface Config {
 /**
  * Configuration files.
  */
-const configDir = resolve(__dirname, "../configs");
+const require = createRequire(import.meta.url);
+const filename = fileURLToPath(import.meta.url);
+const configDir = resolve(dirname(filename), "../configs");
 const configLintStaged = join(configDir, "lint-staged.js");
 
 /**
@@ -47,7 +50,8 @@ const PATHS = {
     return require.resolve("prettier-plugin-package");
   },
   get eslint() {
-    return require.resolve("eslint/bin/eslint.js");
+    const packageJsonPath = require.resolve("eslint/package.json");
+    return join(dirname(packageJsonPath), "bin/eslint.js");
   },
   get rimraf() {
     return require.resolve("rimraf/bin.js");
@@ -59,7 +63,7 @@ const PATHS = {
     return require.resolve("lint-staged/bin/lint-staged.js");
   },
   get jest() {
-    return require.resolve("jest/bin/jest.js");
+    return require.resolve("jest/bin/jest");
   },
   get husky() {
     return require.resolve("husky/lib/bin.js");
@@ -84,6 +88,7 @@ interface RunOptions {
   config: Config;
   env?: Record<string, string>;
   debug?: boolean;
+  nodeArgs?: string[];
 }
 
 /**
@@ -92,7 +97,7 @@ interface RunOptions {
 function run(
   path: string,
   args: string[] = [],
-  { name, config, env }: RunOptions
+  { name, config, env, nodeArgs }: RunOptions
 ) {
   console.log(`> Running "${name}"...`);
   if (config.debug) {
@@ -101,14 +106,15 @@ function run(
   }
 
   return new Promise<void>((resolve, reject) => {
-    const child = spawn("node", [path, ...args], {
+    const child = spawn("node", [...(nodeArgs ?? []), path, ...args], {
       stdio: "inherit",
       cwd: config.dir,
-      env: {
-        ...process.env,
-        ...env,
-        TS_SCRIPTS_CONFIG: JSON.stringify(config),
-      },
+      env: env
+        ? {
+            ...process.env,
+            ...env,
+          }
+        : process.env,
     });
 
     child.on("error", (err) => reject(err));
@@ -120,8 +126,17 @@ function run(
   });
 }
 
+/** Build the list of supported script extensions for ESLint and Jest. */
+function extensionsFromConfig(config: Config): string[] {
+  const exts = ["ts"];
+  if (config.js) exts.push("js");
+  if (config.react) exts.push("tsx");
+  if (config.js && config.react) exts.push("jsx");
+  return exts;
+}
+
 /** Prettier supported glob files. */
-function prettierGlob(config: Config) {
+function prettierGlob() {
   return "*.{js,jsx,ts,tsx,json,css,md,yml,yaml}";
 }
 
@@ -184,7 +199,7 @@ export async function preCommit(argv: string[], config: Config) {
     config,
     env: {
       TS_SCRIPTS_LINT_GLOB: eslintGlob(config),
-      TS_SCRIPTS_FORMAT_GLOB: prettierGlob(config),
+      TS_SCRIPTS_FORMAT_GLOB: prettierGlob(),
     },
   });
 }
@@ -218,7 +233,11 @@ function getEslintConfig({ react }: Config) {
  * Lint the project using `eslint`.
  */
 export async function lint(argv: string[], config: Config) {
-  const { _, "--check": check, "--filter-paths": filterPaths = false } = arg(
+  const {
+    _,
+    "--check": check,
+    "--filter-paths": filterPaths = false,
+  } = arg(
     {
       "--filter-paths": Boolean,
       "--check": Boolean,
@@ -314,7 +333,15 @@ export async function specs(argv: string[], config: Config) {
       watchAll && "--watch-all",
       paths
     ),
-    { name: "jest", config }
+    {
+      name: "jest",
+      config,
+      nodeArgs: ["--experimental-vm-modules"],
+      env: {
+        TS_SCRIPTS_CONFIG: JSON.stringify(config),
+        TS_SCRIPTS_EXTENSIONS: extensionsFromConfig(config).join("|"),
+      },
+    }
   );
 }
 
@@ -330,7 +357,7 @@ export async function format(argv: string[], config: Config) {
   );
 
   if (!paths.length) {
-    const glob = prettierGlob(config);
+    const glob = prettierGlob();
     paths.push(glob);
     for (const dir of config.src) paths.push(posix.join(dir, `**/${glob}`));
   }
@@ -414,14 +441,14 @@ const configSchema = object({
  * Load `ts-scripts` configuration.
  */
 export async function getConfig(cwd: string): Promise<Config> {
-  const config = await pkgConf("ts-scripts", { cwd });
+  const config = await packageConfig("ts-scripts", { cwd });
   const schema = configSchema.parse(config);
 
   return {
     debug: schema.debug ?? false,
     js: schema.js ?? false,
     react: schema.react ?? false,
-    dir: dirname(pkgConf.filepath(config) ?? cwd),
+    dir: dirname(packageJsonPath(config) ?? cwd),
     src: arrayify(schema.src ?? "src"),
     dist: arrayify(schema.dist ?? "dist"),
     project: arrayify(schema.project ?? "tsconfig.json"),
