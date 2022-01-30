@@ -1,6 +1,7 @@
 {
   "extends": "./configs/tsconfig.json",
   "compilerOptions": {
+    "target": "ES2019",
     "outDir": "dist",
     "rootDir": "src",
     "types": ["node", "jest"]
