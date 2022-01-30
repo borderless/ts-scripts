@@ -4,8 +4,8 @@ import { isCI } from "ci-info";
 import { spawn } from "child_process";
 import { resolve, join, posix, dirname, relative } from "path";
 import { fileURLToPath } from "url";
-import { createRequire } from "module";
 import { object, string, array, boolean, union, ZodType } from "zod";
+import { findUp } from "find-up";
 
 /**
  * Test configuration object.
@@ -34,39 +34,44 @@ export interface Config {
 /**
  * Configuration files.
  */
-const require = createRequire(import.meta.url);
 const filename = fileURLToPath(import.meta.url);
-const configDir = resolve(dirname(filename), "../configs");
+const fileDirname = dirname(filename);
+const configDir = resolve(fileDirname, "../configs");
 const configLintStaged = join(configDir, "lint-staged.js");
+
+async function resolvePath(path: string) {
+  const result = await findUp(join("node_modules", path), { cwd: fileDirname });
+  if (!result) throw TypeError(`Unable to resolve: ${path}`);
+  return result;
+}
 
 /**
  * Paths to node.js CLIs in use.
  */
 const PATHS = {
   get prettier() {
-    return require.resolve("prettier/bin-prettier.js");
+    return resolvePath("prettier/bin-prettier.js");
   },
   get prettierPluginPackage() {
-    return require.resolve("prettier-plugin-package");
+    return resolvePath("prettier-plugin-package/lib/index.js");
   },
   get eslint() {
-    const packageJsonPath = require.resolve("eslint/package.json");
-    return join(dirname(packageJsonPath), "bin/eslint.js");
+    return resolvePath("eslint/bin/eslint.js");
   },
   get rimraf() {
-    return require.resolve("rimraf/bin.js");
+    return resolvePath("rimraf/bin.js");
   },
   get typescript() {
-    return require.resolve("typescript/bin/tsc");
+    return resolvePath("typescript/bin/tsc");
   },
   get lintStaged() {
-    return require.resolve("lint-staged/bin/lint-staged.js");
+    return resolvePath("lint-staged/bin/lint-staged.js");
   },
   get jest() {
-    return require.resolve("jest/bin/jest");
+    return resolvePath("jest/bin/jest.js");
   },
   get husky() {
-    return require.resolve("husky/lib/bin.js");
+    return resolvePath("husky/lib/bin.js");
   },
 } as const;
 
@@ -175,7 +180,7 @@ export async function build(argv: string[], config: Config) {
 
   if (!noClean)
     await run(
-      PATHS.rimraf,
+      await PATHS.rimraf,
       args(
         config.dist,
         config.project.map((x) => x.replace(/\.json$/, ".tsbuildinfo"))
@@ -184,7 +189,7 @@ export async function build(argv: string[], config: Config) {
     );
 
   // Build all project references using `--build`.
-  await run(PATHS.typescript, ["-b", ...config.project], {
+  await run(await PATHS.typescript, ["-b", ...config.project], {
     name: "tsc",
     config,
   });
@@ -194,7 +199,7 @@ export async function build(argv: string[], config: Config) {
  * Run the pre-commit hook to lint/fix any code automatically.
  */
 export async function preCommit(argv: string[], config: Config) {
-  await run(PATHS.lintStaged, ["--config", configLintStaged], {
+  await run(await PATHS.lintStaged, ["--config", configLintStaged], {
     name: "lint-staged",
     config,
     env: {
@@ -247,7 +252,7 @@ export async function lint(argv: string[], config: Config) {
 
   const eslintPaths = getEslintPaths(_, filterPaths, config);
   await run(
-    PATHS.eslint,
+    await PATHS.eslint,
     args(!check && "--fix", ["--config", getEslintConfig(config)], eslintPaths),
     {
       name: "eslint",
@@ -318,7 +323,7 @@ export async function specs(argv: string[], config: Config) {
   );
 
   await run(
-    PATHS.jest,
+    await PATHS.jest,
     args(
       ["--config", join(configDir, "jest.js")],
       !failWithNoTests && "--passWithNoTests",
@@ -363,9 +368,9 @@ export async function format(argv: string[], config: Config) {
   }
 
   await run(
-    PATHS.prettier,
+    await PATHS.prettier,
     args(
-      ["--plugin", PATHS.prettierPluginPackage],
+      ["--plugin", await PATHS.prettierPluginPackage],
       !check && "--write",
       check && "--check",
       paths
@@ -383,7 +388,7 @@ export async function format(argv: string[], config: Config) {
 export async function install(argv: string[], config: Config) {
   if (isCI) return;
 
-  await run(PATHS.husky, ["install", join(configDir, "husky")], {
+  await run(await PATHS.husky, ["install", join(configDir, "husky")], {
     name: "husky",
     config,
   });
