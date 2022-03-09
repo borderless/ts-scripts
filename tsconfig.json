@@ -4,7 +4,7 @@
     "target": "ES2019",
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node", "jest"]
+    "types": ["node"]
   },
   "include": ["./src/**/*"]
 }

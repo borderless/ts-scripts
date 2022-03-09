@@ -326,6 +326,7 @@ export async function specs(argv: string[], config: Config) {
     await PATHS.jest,
     args(
       ["--config", join(configDir, "jest.js")],
+      "--injectGlobals=false",
       !failWithNoTests && "--passWithNoTests",
       ci && "--ci",
       coverage && "--coverage",

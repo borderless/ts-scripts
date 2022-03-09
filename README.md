@@ -24,10 +24,13 @@ In your `package.json` you can use the scripts:
     "format": "ts-scripts format",
     "specs": "ts-scripts specs",
     "test": "ts-scripts test",
-    "prepare": "ts-scripts install && ts-scripts build"
+    "build": "ts-scripts build",
+    "prepare": "ts-scripts install && npm run build"
   }
 }
 ```
+
+You will also need to install `typescript` for building and `@jest/globals` for testing.
 
 ### Batteries Included
 
