@@ -37,7 +37,6 @@ export interface Config {
 const filename = fileURLToPath(import.meta.url);
 const fileDirname = dirname(filename);
 const configDir = resolve(fileDirname, "../configs");
-const configLintStaged = join(configDir, "lint-staged.js");
 
 async function resolvePath(path: string) {
   const result = await findUp(join("node_modules", path), { cwd: fileDirname });
@@ -199,14 +198,18 @@ export async function build(argv: string[], config: Config) {
  * Run the pre-commit hook to lint/fix any code automatically.
  */
 export async function preCommit(argv: string[], config: Config) {
-  await run(await PATHS.lintStaged, ["--config", configLintStaged], {
-    name: "lint-staged",
-    config,
-    env: {
-      TS_SCRIPTS_LINT_GLOB: eslintGlob(config),
-      TS_SCRIPTS_FORMAT_GLOB: prettierGlob(),
-    },
-  });
+  await run(
+    await PATHS.lintStaged,
+    ["--config", join(configDir, "lint-staged.cjs")],
+    {
+      name: "lint-staged",
+      config,
+      env: {
+        TS_SCRIPTS_LINT_GLOB: eslintGlob(config),
+        TS_SCRIPTS_FORMAT_GLOB: prettierGlob(),
+      },
+    }
+  );
 }
 
 /**
