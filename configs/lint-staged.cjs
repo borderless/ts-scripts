@@ -5,7 +5,14 @@ const script =
     ? "ts-scripts"
     : `node '${require.resolve("../dist/bin.js")}'`;
 
+console.log(
+  "running",
+  process.cwd(),
+  process.env.TS_SCRIPTS_LINT_GLOB,
+  process.env.TS_SCRIPTS_FORMAT_GLOB
+);
+
 module.exports = {
   [process.env.TS_SCRIPTS_LINT_GLOB]: `${script} lint --filter-paths`,
-  [process.env.TS_SCRIPTS_FORMAT_GLOB]: `${script} format`,
+  ["**/*.ts"]: `${script} format`,
 };
