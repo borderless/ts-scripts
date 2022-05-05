@@ -141,7 +141,7 @@ function extensionsFromConfig(config: Config): string[] {
 
 /** Prettier supported glob files. */
 function prettierGlob() {
-  return "*.{js,jsx,ts,tsx,json,css,md,yml,yaml}";
+  return "*.{js,jsx,ts,tsx,cjs,mjs,json,css,md,yml,yaml}";
 }
 
 /** ESLint supported glob files. */
