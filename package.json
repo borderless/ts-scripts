@@ -33,7 +33,8 @@
     "check": "npm run bin -- check",
     "format": "npm run bin -- format",
     "lint": "npm run bin -- lint",
-    "prepare": "npm run bin -- install && npm run bin -- build",
+    "prepare": "npm run bin -- install",
+    "prepublishOnly": "npm run build",
     "specs": "npm run bin -- specs",
     "test": "npm run bin -- test"
   },

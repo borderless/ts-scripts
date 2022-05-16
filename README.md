@@ -25,7 +25,8 @@ In your `package.json` you can use the scripts:
     "specs": "ts-scripts specs",
     "test": "ts-scripts test",
     "build": "ts-scripts build",
-    "prepare": "ts-scripts install && npm run build"
+    "prepublishOnly": "npm run build",
+    "prepare": "ts-scripts install"
   }
 }
 ```
