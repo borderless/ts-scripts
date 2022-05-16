@@ -15,14 +15,8 @@ module.exports = {
       roots: (test.dir || config.src).map((x) => posix.join("<rootDir>", x)),
       testEnvironment: test.env,
       extensionsToTreatAsEsm: [".jsx", ".ts", ".tsx"],
-      globals: {
-        "ts-jest": {
-          tsconfig: test.project,
-          useESM: true,
-        },
-      },
       transform: {
-        [extensionRegexp]: require.resolve("ts-jest"),
+        [extensionRegexp]: [require.resolve("./esbuild-jest.js"), { test }],
       },
       testRegex: `(?:/__tests__/.*|\\.test|\\.spec)${extensionRegexp}`,
       moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],

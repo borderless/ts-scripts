@@ -177,7 +177,7 @@ export async function build(argv: string[], config: Config) {
     { argv }
   );
 
-  if (!noClean)
+  if (!noClean) {
     await run(
       await PATHS.rimraf,
       args(
@@ -186,6 +186,7 @@ export async function build(argv: string[], config: Config) {
       ),
       { config, name: "rimraf" }
     );
+  }
 
   // Build all project references using `--build`.
   await run(await PATHS.typescript, ["-b", ...config.project], {
@@ -270,6 +271,14 @@ export async function lint(argv: string[], config: Config) {
 export async function check(argv: string[], config: Config) {
   await lint(["--check"], config);
   await format(["--check"], config);
+
+  // Type check with typescript.
+  for (const { project } of config.test) {
+    await run(await PATHS.typescript, ["--noEmit", "--project", project], {
+      name: `tsc --project ${project}`,
+      config,
+    });
+  }
 }
 
 /**
@@ -298,8 +307,9 @@ export async function specs(argv: string[], config: Config) {
     "--ci": ci = isCI,
     "--coverage": coverage,
     "--detect-open-handles": detectOpenHandles,
-    "--force-exit": forceExit,
     "--fail-with-no-tests": failWithNoTests,
+    "--force-exit": forceExit,
+    "--no-cache": noCache,
     "--only-changed": onlyChanged,
     "--test-pattern": testPattern,
     "--update-snapshot": updateSnapshot,
@@ -310,8 +320,9 @@ export async function specs(argv: string[], config: Config) {
       "--ci": Boolean,
       "--coverage": Boolean,
       "--detect-open-handles": Boolean,
-      "--force-exit": Boolean,
       "--fail-with-no-tests": Boolean,
+      "--force-exit": Boolean,
+      "--no-cache": Boolean,
       "--only-changed": Boolean,
       "--test-pattern": String,
       "--update-snapshot": Boolean,
@@ -335,6 +346,7 @@ export async function specs(argv: string[], config: Config) {
       coverage && "--coverage",
       detectOpenHandles && "--detect-open-handles",
       forceExit && "--force-exit",
+      noCache && "--no-cache",
       onlyChanged && "--only-changed",
       testPattern && ["--test-name-pattern", testPattern],
       updateSnapshot && "--update-snapshot",
