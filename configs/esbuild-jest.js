@@ -1,30 +1,28 @@
 const esbuild = require("esbuild");
-const { basename } = require("path");
-const typescript = require("typescript");
+const { extname } = require("path");
+const ts = require("typescript");
 
-exports.createTransformer = (config) => {
+exports.createTransformer = (tsconfig) => {
   return {
     async processAsync(contents, sourcefile) {
-      const filename = basename(sourcefile);
-      const loader = filename.replace(/^.*\./, "");
-
-      const result = await esbuild.build({
+      const result = await esbuild.transform(contents, {
+        tsconfigRaw: tsconfig.options,
+        logLevel: "warning",
+        target:
+          tsconfig.options.target === ts.ScriptTarget.Latest
+            ? "ESNext"
+            : ts.ScriptTarget[tsconfig.options.target],
         format: "esm",
-        tsconfig: config.test.project,
-        write: false,
         minify: false,
+        keepNames: true,
         sourcemap: "external",
-        outdir: "dist",
-        stdin: {
-          contents,
-          sourcefile,
-          loader,
-        },
+        loader: extname(sourcefile).slice(1),
+        sourcefile,
       });
 
       return {
-        map: result.outputFiles[0].text,
-        code: result.outputFiles[1].text,
+        map: result.map,
+        code: result.code,
       };
     },
   };
