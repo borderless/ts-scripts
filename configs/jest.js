@@ -6,7 +6,6 @@ const config = JSON.parse(process.env.TS_SCRIPTS_CONFIG || "{}");
 const extensions = process.env.TS_SCRIPTS_EXTENSIONS || "";
 const extensionRegexp = `\\.(?:${extensions})$`;
 
-/** @type {import("ts-jest/dist/types").InitialOptionsTsJest} */
 module.exports = {
   rootDir: config.dir,
   projects: config.test.map((test) => {
@@ -26,7 +25,6 @@ module.exports = {
       throw new TypeError(`Unable to read project: ${message}`);
     }
 
-    /** @type {import("ts-jest/dist/types").InitialOptionsTsJest} */
     const options = {
       rootDir: config.dir,
       roots: (test.dir || config.src).map((x) => posix.join("<rootDir>", x)),
@@ -37,6 +35,9 @@ module.exports = {
       },
       testRegex: `(?:/__tests__/.*|\\.test|\\.spec)${extensionRegexp}`,
       moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
+      moduleNameMapper: {
+        "^(\\.{1,2}/.*)\\.js$": ["$1.ts", "$1.tsx", "$1.js", "$1.jsx"],
+      },
     };
 
     // Set explicitly since `undefined` gets serialized to a string.
