@@ -243,7 +243,7 @@ function getEslintConfig({ react }: Config) {
  */
 export async function lint(argv: string[], config: Config) {
   const {
-    _,
+    _: paths,
     "--check": check,
     "--filter-paths": filterPaths = false,
   } = arg(
@@ -254,7 +254,7 @@ export async function lint(argv: string[], config: Config) {
     { argv }
   );
 
-  const eslintPaths = getEslintPaths(_, filterPaths, config);
+  const eslintPaths = getEslintPaths(paths, filterPaths, config);
   await run(
     await PATHS.eslint,
     args(!check && "--fix", ["--config", getEslintConfig(config)], eslintPaths),
