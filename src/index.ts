@@ -11,9 +11,8 @@ import { findUp } from "find-up";
  * Test configuration object.
  */
 export interface Test {
-  name: string | undefined;
-  dir: string[] | undefined;
-  env: string;
+  dir: string | undefined;
+  config: string | undefined;
   project: string;
 }
 
@@ -49,31 +48,37 @@ async function resolvePath(path: string) {
  * Paths to node.js CLIs in use.
  */
 const PATHS = {
-  get prettier() {
+  prettier() {
     return resolvePath("prettier/bin-prettier.js");
   },
-  get prettierPluginPackage() {
+  prettierPluginPackage() {
     return resolvePath("prettier-plugin-package/lib/index.js");
   },
-  get eslint() {
+  eslint() {
     return resolvePath("eslint/bin/eslint.js");
   },
-  get rimraf() {
+  rimraf() {
     return resolvePath("rimraf/bin.js");
   },
-  get typescript() {
+  typescript() {
     return resolvePath("typescript/bin/tsc");
   },
-  get lintStaged() {
+  lintStaged() {
     return resolvePath("lint-staged/bin/lint-staged.js");
   },
-  get jest() {
-    return resolvePath("jest/bin/jest.js");
+  vitest() {
+    return resolvePath("vitest/vitest.mjs");
   },
-  get husky() {
+  husky() {
     return resolvePath("husky/lib/bin.js");
   },
 } as const;
+
+/** Prettier supported glob files. */
+const PRETTIER_GLOB = "*.{js,jsx,ts,tsx,cjs,mjs,json,css,md,yml,yaml}";
+
+/** ESLint supported glob files. */
+const ESLINT_GLOB = `*.{js,jsx,ts,tsx}`;
 
 /**
  * Run command configuration.
@@ -121,16 +126,6 @@ function run(
   });
 }
 
-/** Prettier supported glob files. */
-function prettierGlob() {
-  return "*.{js,jsx,ts,tsx,cjs,mjs,json,css,md,yml,yaml}";
-}
-
-/** ESLint supported glob files. */
-function eslintGlob() {
-  return `*.{js,jsx,ts,tsx}`;
-}
-
 /**
  * Build args from a set of possible values.
  */
@@ -158,21 +153,24 @@ export async function build(argv: string[], config: Config) {
   );
 
   if (!noClean) {
-    await run(
-      await PATHS.rimraf,
-      args(
-        config.dist,
-        config.project.map((x) => x.replace(/\.json$/, ".tsbuildinfo"))
-      ),
-      { config, name: "rimraf" }
-    );
+    const paths = [
+      ...config.dist,
+      ...config.project.map((x) => x.replace(/\.json$/, ".tsbuildinfo")),
+    ];
+
+    // Skip `rimraf` if dist and project have been disabled.
+    if (paths.length) {
+      await run(await PATHS.rimraf(), paths, { config, name: "rimraf" });
+    }
   }
 
   // Build all project references using `--build`.
-  await run(await PATHS.typescript, ["-b", ...config.project], {
-    name: "tsc",
-    config,
-  });
+  if (config.project.length) {
+    await run(await PATHS.typescript(), ["--build", ...config.project], {
+      name: "tsc --build",
+      config,
+    });
+  }
 }
 
 /**
@@ -180,14 +178,14 @@ export async function build(argv: string[], config: Config) {
  */
 export async function preCommit(argv: string[], config: Config) {
   await run(
-    await PATHS.lintStaged,
+    await PATHS.lintStaged(),
     ["--config", join(configDir, "lint-staged.cjs")],
     {
       name: "lint-staged",
       config,
       env: {
-        TS_SCRIPTS_LINT_GLOB: eslintGlob(),
-        TS_SCRIPTS_FORMAT_GLOB: prettierGlob(),
+        TS_SCRIPTS_LINT_GLOB: ESLINT_GLOB,
+        TS_SCRIPTS_FORMAT_GLOB: PRETTIER_GLOB,
       },
     }
   );
@@ -198,7 +196,7 @@ export async function preCommit(argv: string[], config: Config) {
  */
 function getEslintPaths(paths: string[], filter: boolean, config: Config) {
   if (!paths.length) {
-    return config.src.map((x) => posix.join(x, `**/${eslintGlob()}`));
+    return config.src.map((x) => posix.join(x, `**/${ESLINT_GLOB}`));
   }
 
   if (filter) {
@@ -236,7 +234,7 @@ export async function lint(argv: string[], config: Config) {
 
   const eslintPaths = getEslintPaths(paths, filterPaths, config);
   await run(
-    await PATHS.eslint,
+    await PATHS.eslint(),
     args(!check && "--fix", ["--config", getEslintConfig()], eslintPaths),
     {
       name: "eslint",
@@ -254,28 +252,11 @@ export async function check(argv: string[], config: Config) {
 
   // Type check with typescript.
   for (const { project } of config.test) {
-    await run(await PATHS.typescript, ["--noEmit", "--project", project], {
-      name: `tsc --project ${project}`,
+    await run(await PATHS.typescript(), ["--noEmit", "--project", project], {
+      name: `tsc --noEmit --project ${project}`,
       config,
     });
   }
-}
-
-/**
- * Run full test suite without automatic fixes.
- */
-export async function test(argv: string[], config: Config) {
-  const { "--force-exit": forceExit } = arg(
-    {
-      "--force-exit": Boolean,
-      "-f": "--force-exit",
-    },
-    { argv }
-  );
-
-  await check([], config);
-  await specs(args("--ci", "--coverage", forceExit && "--force-exit"), config);
-  await build(["--no-clean"], config);
 }
 
 /**
@@ -284,65 +265,83 @@ export async function test(argv: string[], config: Config) {
 export async function specs(argv: string[], config: Config) {
   const {
     _: paths,
-    "--ci": ci = isCI,
+    "--changed": changed,
     "--coverage": coverage,
-    "--detect-open-handles": detectOpenHandles,
-    "--fail-with-no-tests": failWithNoTests,
-    "--force-exit": forceExit,
-    "--no-cache": noCache,
-    "--only-changed": onlyChanged,
+    "--since": since,
     "--test-pattern": testPattern,
-    "--update-snapshot": updateSnapshot,
-    "--watch-all": watchAll,
+    "--ui": ui,
+    "--update": update,
     "--watch": watch,
   } = arg(
     {
-      "--ci": Boolean,
+      "--changed": Boolean,
       "--coverage": Boolean,
-      "--detect-open-handles": Boolean,
-      "--fail-with-no-tests": Boolean,
-      "--force-exit": Boolean,
-      "--no-cache": Boolean,
-      "--only-changed": Boolean,
+      "--since": String,
       "--test-pattern": String,
-      "--update-snapshot": Boolean,
-      "--watch-all": Boolean,
-      "--watch": Boolean,
-      "-f": "--force-exit",
-      "-o": "--only-changed",
+      "--ui": Boolean,
+      "--update": Boolean,
+      "--watch": Number,
       "-t": "--test-pattern",
-      "-u": "--update-snapshot",
+      "-u": "--update",
     },
     { argv }
   );
 
-  await run(
-    await PATHS.jest,
-    args(
-      ["--config", join(configDir, "jest.js")],
-      "--injectGlobals=false",
-      !failWithNoTests && "--passWithNoTests",
-      ci && "--ci",
-      coverage && "--coverage",
-      detectOpenHandles && "--detect-open-handles",
-      forceExit && "--force-exit",
-      noCache && "--no-cache",
-      onlyChanged && "--only-changed",
-      testPattern && ["--test-name-pattern", testPattern],
-      updateSnapshot && "--update-snapshot",
-      watch && "--watch",
-      watchAll && "--watch-all",
-      paths
-    ),
-    {
-      name: "jest",
-      config,
-      nodeArgs: ["--experimental-vm-modules"],
-      env: {
-        TS_SCRIPTS_CONFIG: JSON.stringify(config),
-      },
-    }
+  const path = await PATHS.vitest();
+  const defaultArgs = args(
+    "--passWithNoTests",
+    coverage && "--coverage",
+    update && "--update",
+    changed && !since && "--changed",
+    testPattern && "--testNamePattern",
+    since && ["--changed", since],
+    ui && "--ui",
+    paths
   );
+
+  if (watch) {
+    const test = config.test[watch];
+    if (!test) throw new TypeError(`No test config at: ${watch}`);
+
+    return run(
+      path,
+      args(
+        "watch",
+        defaultArgs,
+        test.config && ["--config", test.config],
+        test.dir && ["--dir", test.dir]
+      ),
+      {
+        name: "vitest watch",
+        config,
+      }
+    );
+  }
+
+  for (const test of config.test) {
+    await run(
+      await PATHS.vitest(),
+      args(
+        "run",
+        defaultArgs,
+        test.config && ["--config", test.config],
+        test.dir && ["--dir", test.dir]
+      ),
+      {
+        name: "vitest run",
+        config,
+      }
+    );
+  }
+}
+
+/**
+ * Run full test suite without automatic fixes.
+ */
+export async function test(argv: string[], config: Config) {
+  await check([], config);
+  await specs(["run", "--coverage"], config);
+  await build(["--no-clean"], config);
 }
 
 /**
@@ -357,15 +356,21 @@ export async function format(argv: string[], config: Config) {
   );
 
   if (!paths.length) {
-    const glob = prettierGlob();
-    paths.push(glob);
-    for (const dir of config.src) paths.push(posix.join(dir, `**/${glob}`));
+    paths.push(PRETTIER_GLOB);
+    for (const src of config.src) {
+      paths.push(posix.join(src, `**/${PRETTIER_GLOB}`));
+    }
   }
 
+  const [prettierPath, prettierPluginPackage] = await Promise.all([
+    PATHS.prettier(),
+    PATHS.prettierPluginPackage(),
+  ]);
+
   await run(
-    await PATHS.prettier,
+    prettierPath,
     args(
-      ["--plugin", await PATHS.prettierPluginPackage],
+      ["--plugin", prettierPluginPackage],
       !check && "--write",
       check && "--check",
       paths
@@ -383,7 +388,7 @@ export async function format(argv: string[], config: Config) {
 export async function install(argv: string[], config: Config) {
   if (isCI) return;
 
-  await run(await PATHS.husky, ["install", join(configDir, "husky")], {
+  await run(await PATHS.husky(), ["install", join(configDir, "husky")], {
     name: "husky",
     config,
   });
@@ -430,16 +435,13 @@ const arrayify = <T>(value: T | T[]) => {
  */
 const configSchema = object({
   debug: boolean().optional(),
-  js: boolean().optional(),
-  react: boolean().optional(),
   src: arrayifySchema(string()).optional(),
   dist: arrayifySchema(string()).optional(),
   project: arrayifySchema(string()).optional(),
   test: arrayifySchema(
     object({
-      name: string().optional(),
-      env: string().optional(),
-      dir: arrayifySchema(string()).optional(),
+      dir: string().optional(),
+      config: string().optional(),
       project: string().optional(),
     })
   ).optional(),
@@ -459,9 +461,8 @@ export async function getConfig(cwd: string): Promise<Config> {
     dist: arrayify(schema.dist ?? "dist"),
     project: arrayify(schema.project ?? "tsconfig.json"),
     test: arrayify(schema.test ?? {}).map((testSchema) => ({
-      name: testSchema.name,
-      dir: testSchema.dir ? arrayify(testSchema.dir) : undefined,
-      env: testSchema.env ?? "node",
+      dir: testSchema.dir,
+      config: testSchema.config,
       project: testSchema.project ?? "tsconfig.json",
     })),
   };

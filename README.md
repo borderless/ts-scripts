@@ -31,30 +31,36 @@ In your `package.json` you can use the scripts:
 }
 ```
 
-You will also need to install `typescript` for building and `@jest/globals` for testing.
+You will also need to install `typescript` for building and `vitest` for testing.
 
 ### Batteries Included
 
-- `install` - Installs `husky` and `lint-staged`
-- `lint` - Uses `eslint --fix`
-- `format` - Uses `prettier --write`
-- `specs` - Uses `jest`
+- `install` - Installs `husky` and `lint-staged` for git commit hooks
+- `lint` - Uses `eslint --fix` on all supported files in `src` (i.e. `js`, `jsx`, `ts`, `tsx`)
+- `format` - Uses `prettier --write` on all supported files in `src` and the root directory
+- `specs` - Uses `vitest` to run test files match `*.{test,spec}.*` files
+  - `--watch <index>` Runs vitest in watch mode on the config at `<index>`
+  - `--update` Updates the snapshot files
+  - `--changed` Runs tests on only changed files
+  - `--since <commit>` Runs tests on files changed since `<commit>`
+  - `--test-pattern` Runs tests matching the specified pattern
 - `build` - Uses `rimraf` and `tsc`
-- `check` - Uses `eslint` and `prettier --check`
+- `check` - Uses `eslint`, `prettier --check`, and `tsc` on each test "project"
 - `test` - Runs `check`, `specs`, and `build`
 
 ### Configuration
 
 Configuration can get specified in your `package.json` file under `ts-scripts`:
 
-- `src` - An array of source directories to read (default: `["src"]`)
-- `dist` - An array of output directories to clean, i.e. `outDir` in `tsconfig.json` (default: `["dist"]`)
-- `project` An array of `tsconfig.json` project files for TypeScript (default: `["tsconfig.json"]`)
+- `src` - An array of source directories used for `format` and `lint` (default: `["src"]`)
+- `dist` - An array of output directories to clean before `build` (default: `["dist"]`)
+- `project` An array of `tsconfig.json` project files to build using TypeScript (default: `["tsconfig.json"]`)
 - `test` An array of test configuration objects (default: `[{}]`)
-  - `name` The name of this test configuration (default: `undefined`)
-  - `dir` An array of directories to read tests from (default: `src`)
-  - `env` The environment to use for these tests (default: `"node"`)
-  - `project` The `tsconfig.json` project file to use for this test (default: `"tsconfig.json"`)
+  - `dir` The directory to read tests from (default: `undefined`, root directory)
+  - `config` The configuration file to use for this test (default: `undefined`, discovered by `vitest`)
+  - `project` The `tsconfig.json` project file to use for type checking (default: `"tsconfig.json"`)
+
+Specific configuration can be disabled for customized configuration by setting `src`, `dist`, `project`, or `test` to an empty array.
 
 ## License
 
