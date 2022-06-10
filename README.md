@@ -47,8 +47,6 @@ You will also need to install `typescript` for building and `@jest/globals` for 
 
 Configuration can get specified in your `package.json` file under `ts-scripts`:
 
-- `js` - Enables `.js` files for linting and testing (default: `false`)
-- `react` - Enables React.js for linting and testing (default: `false`)
 - `src` - An array of source directories to read (default: `["src"]`)
 - `dist` - An array of output directories to clean, i.e. `outDir` in `tsconfig.json` (default: `["dist"]`)
 - `project` An array of `tsconfig.json` project files for TypeScript (default: `["tsconfig.json"]`)
