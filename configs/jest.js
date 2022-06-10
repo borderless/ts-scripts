@@ -3,8 +3,7 @@ const ts = require("typescript");
 
 /** @type {import("../src/index").Config} */
 const config = JSON.parse(process.env.TS_SCRIPTS_CONFIG || "{}");
-const extensions = process.env.TS_SCRIPTS_EXTENSIONS || "";
-const extensionRegexp = `\\.(?:${extensions})$`;
+const extensionRegexp = `\\.(?:js|jsx|ts|tsx)$`;
 
 module.exports = {
   rootDir: config.dir,

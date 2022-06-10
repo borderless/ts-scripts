@@ -22,8 +22,6 @@ export interface Test {
  */
 export interface Config {
   debug: boolean;
-  js: boolean;
-  react: boolean;
   dir: string;
   src: string[];
   dist: string[];
@@ -38,6 +36,9 @@ const filename = fileURLToPath(import.meta.url);
 const fileDirname = dirname(filename);
 const configDir = resolve(fileDirname, "../configs");
 
+/**
+ * Resolves the absolute path to files within node modules.
+ */
 async function resolvePath(path: string) {
   const result = await findUp(join("node_modules", path), { cwd: fileDirname });
   if (!result) throw TypeError(`Unable to resolve: ${path}`);
@@ -73,16 +74,6 @@ const PATHS = {
     return resolvePath("husky/lib/bin.js");
   },
 } as const;
-
-/**
- * Get a value from an object by key.
- */
-function get<K extends PropertyKey, T>(
-  obj: Record<K | PropertyKey, T>,
-  key: K
-): T | undefined {
-  return Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : undefined;
-}
 
 /**
  * Run command configuration.
@@ -130,25 +121,14 @@ function run(
   });
 }
 
-/** Build the list of supported script extensions for ESLint and Jest. */
-function extensionsFromConfig(config: Config): string[] {
-  const exts = ["ts"];
-  if (config.js) exts.push("js");
-  if (config.react) exts.push("tsx");
-  if (config.js && config.react) exts.push("jsx");
-  return exts;
-}
-
 /** Prettier supported glob files. */
 function prettierGlob() {
   return "*.{js,jsx,ts,tsx,cjs,mjs,json,css,md,yml,yaml}";
 }
 
 /** ESLint supported glob files. */
-function eslintGlob(config: Config) {
-  const exts = extensionsFromConfig(config);
-  if (exts.length > 1) return `*.{${exts.join(",")}}`;
-  return `*.${exts[0]}`;
+function eslintGlob() {
+  return `*.{js,jsx,ts,tsx}`;
 }
 
 /**
@@ -206,7 +186,7 @@ export async function preCommit(argv: string[], config: Config) {
       name: "lint-staged",
       config,
       env: {
-        TS_SCRIPTS_LINT_GLOB: eslintGlob(config),
+        TS_SCRIPTS_LINT_GLOB: eslintGlob(),
         TS_SCRIPTS_FORMAT_GLOB: prettierGlob(),
       },
     }
@@ -218,7 +198,7 @@ export async function preCommit(argv: string[], config: Config) {
  */
 function getEslintPaths(paths: string[], filter: boolean, config: Config) {
   if (!paths.length) {
-    return config.src.map((x) => posix.join(x, `**/${eslintGlob(config)}`));
+    return config.src.map((x) => posix.join(x, `**/${eslintGlob()}`));
   }
 
   if (filter) {
@@ -234,8 +214,8 @@ function getEslintPaths(paths: string[], filter: boolean, config: Config) {
 /**
  * Get the expected ESLint config with react support.
  */
-function getEslintConfig({ react }: Config) {
-  return join(configDir, react ? "eslint.react.js" : "eslint.js");
+function getEslintConfig() {
+  return join(configDir, "eslint.js");
 }
 
 /**
@@ -257,7 +237,7 @@ export async function lint(argv: string[], config: Config) {
   const eslintPaths = getEslintPaths(paths, filterPaths, config);
   await run(
     await PATHS.eslint,
-    args(!check && "--fix", ["--config", getEslintConfig(config)], eslintPaths),
+    args(!check && "--fix", ["--config", getEslintConfig()], eslintPaths),
     {
       name: "eslint",
       config,
@@ -360,7 +340,6 @@ export async function specs(argv: string[], config: Config) {
       nodeArgs: ["--experimental-vm-modules"],
       env: {
         TS_SCRIPTS_CONFIG: JSON.stringify(config),
-        TS_SCRIPTS_EXTENSIONS: extensionsFromConfig(config).join("|"),
       },
     }
   );
@@ -411,18 +390,26 @@ export async function install(argv: string[], config: Config) {
 }
 
 /**
+ * Prints the generated configuration for debugging.
+ */
+export async function config(argv: string[], config: Config) {
+  console.log(JSON.stringify(config, null, 2));
+}
+
+/**
  * Supported scripts.
  */
-export const scripts = {
-  build: build,
-  "pre-commit": preCommit,
-  format: format,
-  specs: specs,
-  test: test,
-  lint: lint,
-  check: check,
-  install: install,
-} as const;
+const scripts = new Map([
+  ["build", build],
+  ["pre-commit", preCommit],
+  ["format", format],
+  ["specs", specs],
+  ["test", test],
+  ["lint", lint],
+  ["check", check],
+  ["install", install],
+  ["config", config],
+]);
 
 /**
  * Allow array or string values for schema entries.
@@ -467,8 +454,6 @@ export async function getConfig(cwd: string): Promise<Config> {
 
   return {
     debug: schema.debug ?? false,
-    js: schema.js ?? false,
-    react: schema.react ?? false,
     dir: dirname(packageJsonPath(config) ?? cwd),
     src: arrayify(schema.src ?? "src"),
     dist: arrayify(schema.dist ?? "dist"),
@@ -486,20 +471,19 @@ export async function getConfig(cwd: string): Promise<Config> {
  * Main configuration options.
  */
 export interface Options {
-  cwd?: string;
+  cwd: string;
 }
 
 /**
  * Main script runtime.
  */
-export async function main(args: string[], { cwd = process.cwd() }: Options) {
+export async function main(args: string[], options: Options) {
   const [command, ...flags] = args;
-  const script = get(scripts, command);
-
+  const script = scripts.get(command);
   if (!script) {
     throw new TypeError(`Script does not exist: ${command}`);
   }
 
-  const config = await getConfig(cwd);
+  const config = await getConfig(options.cwd);
   return script(flags, config);
 }
