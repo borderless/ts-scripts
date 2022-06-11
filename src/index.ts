@@ -307,9 +307,9 @@ export async function specs(argv: string[], config: Config) {
       path,
       args(
         "watch",
-        defaultArgs,
         test.config && ["--config", test.config],
-        test.dir && ["--dir", test.dir]
+        test.dir && ["--dir", test.dir],
+        defaultArgs
       ),
       {
         name: "vitest watch",
@@ -323,9 +323,9 @@ export async function specs(argv: string[], config: Config) {
       await PATHS.vitest(),
       args(
         "run",
-        defaultArgs,
         test.config && ["--config", test.config],
-        test.dir && ["--dir", test.dir]
+        test.dir && ["--dir", test.dir],
+        defaultArgs
       ),
       {
         name: "vitest run",
