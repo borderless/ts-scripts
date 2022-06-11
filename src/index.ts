@@ -340,7 +340,7 @@ export async function specs(argv: string[], config: Config) {
  */
 export async function test(argv: string[], config: Config) {
   await check([], config);
-  await specs(["run", "--coverage"], config);
+  await specs(["--coverage"], config);
   await build(["--no-clean"], config);
 }
 
