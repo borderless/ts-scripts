@@ -449,11 +449,11 @@ const configSchema = object({
   ignore: arrayifySchema(string()).optional(),
   dist: arrayifySchema(string()).optional(),
   project: arrayifySchema(string()).optional(),
+  checkProject: arrayifySchema(string()).optional(),
   test: arrayifySchema(
     object({
       dir: string().optional(),
       config: string().optional(),
-      project: string().optional(),
     })
   ).optional(),
 });
@@ -472,7 +472,7 @@ export async function getConfig(cwd: string): Promise<Config> {
     ignore: arrayify(schema.ignore ?? []),
     dist: arrayify(schema.dist ?? "dist"),
     project: arrayify(schema.project ?? "tsconfig.json"),
-    checkProject: arrayify(schema.project ?? "tsconfig.json"),
+    checkProject: arrayify(schema.checkProject ?? "tsconfig.json"),
     test: arrayify(schema.test ?? {}).map((testSchema) => ({
       dir: testSchema.dir,
       config: testSchema.config,
