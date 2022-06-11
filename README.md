@@ -53,12 +53,13 @@ You will also need to install `typescript` for building and `vitest` for testing
 Configuration can get specified in your `package.json` file under `ts-scripts`:
 
 - `src` - An array of source directories used for `format` and `lint` (default: `["src"]`)
+- `ignore` - An array of patterns to ignore for `format` and `lint` (default: `[]`)
 - `dist` - An array of output directories to clean before `build` (default: `["dist"]`)
 - `project` An array of `tsconfig.json` project files to build using TypeScript (default: `["tsconfig.json"]`)
+- `checkProject` An array of `tsconfig.json` project files to type check using TypeScript (default: `["tsconfig.json"]`)
 - `test` An array of test configuration objects (default: `[{}]`)
   - `dir` The directory to read tests from (default: `undefined`, root directory)
   - `config` The configuration file to use for this test (default: `undefined`, discovered by `vitest`)
-  - `project` The `tsconfig.json` project file to use for type checking (default: `"tsconfig.json"`)
 
 Specific configuration can be disabled for customized configuration by setting `src`, `dist`, `project`, or `test` to an empty array.
 

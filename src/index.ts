@@ -13,7 +13,6 @@ import { findUp } from "find-up";
 export interface Test {
   dir: string | undefined;
   config: string | undefined;
-  project: string;
 }
 
 /**
@@ -23,8 +22,10 @@ export interface Config {
   debug: boolean;
   dir: string;
   src: string[];
+  ignore: string[];
   dist: string[];
   project: string[];
+  checkProject: string[];
   test: Test[];
 }
 
@@ -235,7 +236,12 @@ export async function lint(argv: string[], config: Config) {
   const eslintPaths = getEslintPaths(paths, filterPaths, config);
   await run(
     await PATHS.eslint(),
-    args(!check && "--fix", ["--config", getEslintConfig()], eslintPaths),
+    args(
+      !check && "--fix",
+      ["--config", getEslintConfig()],
+      config.ignore.flatMap((ignore) => ["--ignore-pattern", ignore]),
+      eslintPaths
+    ),
     {
       name: "eslint",
       config,
@@ -251,7 +257,7 @@ export async function check(argv: string[], config: Config) {
   await format(["--check"], config);
 
   // Type check with typescript.
-  for (const { project } of config.test) {
+  for (const project of config.checkProject) {
     await run(await PATHS.typescript(), ["--noEmit", "--project", project], {
       name: `tsc --noEmit --project ${project}`,
       config,
@@ -362,6 +368,10 @@ export async function format(argv: string[], config: Config) {
     }
   }
 
+  for (const ignore of config.ignore) {
+    paths.push(`!${ignore}`);
+  }
+
   const [prettierPath, prettierPluginPackage] = await Promise.all([
     PATHS.prettier(),
     PATHS.prettierPluginPackage(),
@@ -436,6 +446,7 @@ const arrayify = <T>(value: T | T[]) => {
 const configSchema = object({
   debug: boolean().optional(),
   src: arrayifySchema(string()).optional(),
+  ignore: arrayifySchema(string()).optional(),
   dist: arrayifySchema(string()).optional(),
   project: arrayifySchema(string()).optional(),
   test: arrayifySchema(
@@ -458,12 +469,13 @@ export async function getConfig(cwd: string): Promise<Config> {
     debug: schema.debug ?? false,
     dir: dirname(packageJsonPath(config) ?? cwd),
     src: arrayify(schema.src ?? "src"),
+    ignore: arrayify(schema.ignore ?? []),
     dist: arrayify(schema.dist ?? "dist"),
     project: arrayify(schema.project ?? "tsconfig.json"),
+    checkProject: arrayify(schema.project ?? "tsconfig.json"),
     test: arrayify(schema.test ?? {}).map((testSchema) => ({
       dir: testSchema.dir,
       config: testSchema.config,
-      project: testSchema.project ?? "tsconfig.json",
     })),
   };
 }
