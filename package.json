@@ -23,7 +23,11 @@
     "ts-scripts": "dist/bin.js"
   },
   "type": "module",
-  "exports": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./configs/eslint.js": "./configs/eslint.js",
+    "./configs/tsconfig.json": "./configs/tsconfig.json"
+  },
   "engines": {
     "node": "^14.13.1 || >=16.0.0"
   },
