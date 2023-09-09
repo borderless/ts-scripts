@@ -22,7 +22,7 @@ In your `package.json` you can use the scripts:
   "scripts": {
     "format": "ts-scripts format",
     "specs": "ts-scripts specs",
-    "test": "ts-scripts test", // Runs `check`, `specs --coverage`, `build --no-clean`.
+    "test": "ts-scripts test", // Runs `check`, `specs --coverage`, `build`.
     "build": "ts-scripts build",
     "prepublishOnly": "npm run build",
     "prepare": "ts-scripts install"
@@ -31,6 +31,8 @@ In your `package.json` you can use the scripts:
 ```
 
 You will also need to install `typescript` for building and `vitest` for specs.
+
+**Note:** If using `bun`, you don't need `vitest`. You can use `bun test` instead.
 
 ### Batteries Included
 
