@@ -1,8 +1,7 @@
 import arg from "arg";
 import { packageConfig, packageJsonPath } from "pkg-conf";
 import { isCI } from "ci-info";
-import { spawn } from "child_process";
-import { resolve, join, posix, dirname, relative } from "path";
+import { resolve, join, posix, dirname } from "path";
 import { fileURLToPath } from "url";
 import { object, string, array, boolean, union, ZodType } from "zod";
 import { findUp } from "find-up";
@@ -50,16 +49,7 @@ async function resolvePath(path: string) {
  */
 const PATHS = {
   prettier() {
-    return resolvePath("prettier/bin-prettier.js");
-  },
-  prettierPluginPackage() {
-    return resolvePath("prettier-plugin-package/lib/index.js");
-  },
-  eslint() {
-    return resolvePath("eslint/bin/eslint.js");
-  },
-  rimraf() {
-    return resolvePath("rimraf/bin.js");
+    return resolvePath("prettier/bin/prettier.cjs");
   },
   typescript() {
     return resolvePath("typescript/bin/tsc");
@@ -70,16 +60,10 @@ const PATHS = {
   vitest() {
     return resolvePath("vitest/vitest.mjs");
   },
-  husky() {
-    return resolvePath("husky/lib/bin.js");
-  },
 } as const;
 
 /** Prettier supported glob files. */
 const PRETTIER_GLOB = "*.{js,jsx,ts,tsx,cjs,mjs,json,css,md,yml,yaml}";
-
-/** ESLint supported glob files. */
-const ESLINT_GLOB = `*.{js,jsx,ts,tsx}`;
 
 /**
  * Run command configuration.
@@ -89,39 +73,66 @@ interface RunOptions {
   config: Config;
   env?: Record<string, string>;
   debug?: boolean;
-  nodeArgs?: string[];
+}
+
+/**
+ * Log the step being run.
+ */
+function logStep(name: string, info?: string) {
+  console.log(`> Running "${name}"...${info ? ` (${info})` : ""}`);
 }
 
 /**
  * Spawn a CLI command process.
  */
-function run(
+async function run(
   path: string,
   args: string[] = [],
-  { name, config, env, nodeArgs }: RunOptions
+  { name, config, env = {} }: RunOptions,
 ) {
-  console.log(`> Running "${name}"...`);
+  logStep(name);
+
   if (config.debug) {
     console.log(`> Path: ${JSON.stringify(path)}"`);
     console.log(`> Args: ${JSON.stringify(args.join(" "))}`);
   }
 
-  return new Promise<void>((resolve, reject) => {
-    const child = spawn("node", [...(nodeArgs ?? []), path, ...args], {
-      stdio: "inherit",
+  if (typeof Bun === "object") {
+    // Bun has a bug where it exits the parent process when using `spawn`.
+    const child = Bun.spawnSync([process.argv0, path, ...args], {
+      stdio: ["inherit", "inherit", "inherit"],
       cwd: config.dir,
-      env: env
-        ? {
-            ...process.env,
-            ...env,
-          }
-        : process.env,
+      env: {
+        ...process.env,
+        ...env,
+      },
     });
 
-    child.on("error", (err) => reject(err));
+    if (child.exitCode) {
+      throw new Error(`"${name}" exited with ${child.exitCode}`);
+    }
+    return;
+  }
+
+  const { spawn } = await import("child_process");
+
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(process.argv0, [path, ...args], {
+      stdio: "inherit",
+      cwd: config.dir,
+      env: {
+        ...process.env,
+        ...env,
+      },
+    });
+
+    child.on("error", (err) => {
+      reject(err);
+    });
     child.on("close", (code, signal) => {
-      if (code) return reject(new Error(`"${name}" exited with ${code}`));
-      if (signal) return reject(new Error(`"${name}" exited with ${signal}`));
+      if (code || signal) {
+        return reject(new Error(`"${name}" exited with ${code || signal}`));
+      }
       return resolve();
     });
   });
@@ -150,7 +161,7 @@ export async function build(argv: string[], config: Config) {
     {
       "--no-clean": Boolean,
     },
-    { argv }
+    { argv },
   );
 
   if (!noClean) {
@@ -161,7 +172,10 @@ export async function build(argv: string[], config: Config) {
 
     // Skip `rimraf` if dist and project have been disabled.
     if (paths.length) {
-      await run(await PATHS.rimraf(), paths, { config, name: "rimraf" });
+      logStep("rimraf");
+
+      const rimraf = await import("rimraf");
+      await rimraf.rimraf(paths);
     }
   }
 
@@ -175,85 +189,26 @@ export async function build(argv: string[], config: Config) {
 }
 
 /**
- * Run the pre-commit hook to lint/fix any code automatically.
+ * Run the pre-commit hook on every `git commit`.
  */
 export async function preCommit(argv: string[], config: Config) {
   await run(
     await PATHS.lintStaged(),
-    ["--config", join(configDir, "lint-staged.cjs")],
+    ["--config", join(configDir, "lint-staged.mjs")],
     {
       name: "lint-staged",
       config,
       env: {
-        TS_SCRIPTS_LINT_GLOB: ESLINT_GLOB,
         TS_SCRIPTS_FORMAT_GLOB: PRETTIER_GLOB,
       },
-    }
-  );
-}
-
-/**
- * Resolve ESLint paths for linting.
- */
-function getEslintPaths(paths: string[], filter: boolean, config: Config) {
-  if (!paths.length) {
-    return config.src.map((x) => posix.join(x, `**/${ESLINT_GLOB}`));
-  }
-
-  if (filter) {
-    const fullSrc = config.src.map((x) => resolve(config.dir, x));
-    return paths.filter((path) =>
-      fullSrc.some((src) => !relative(src, path).startsWith(".."))
-    );
-  }
-
-  return paths;
-}
-
-/**
- * Get the expected ESLint config with react support.
- */
-function getEslintConfig() {
-  return join(configDir, "eslint.js");
-}
-
-/**
- * Lint the project using `eslint`.
- */
-export async function lint(argv: string[], config: Config) {
-  const {
-    _: paths,
-    "--check": check,
-    "--filter-paths": filterPaths = false,
-  } = arg(
-    {
-      "--filter-paths": Boolean,
-      "--check": Boolean,
     },
-    { argv }
-  );
-
-  const eslintPaths = getEslintPaths(paths, filterPaths, config);
-  await run(
-    await PATHS.eslint(),
-    args(
-      !check && "--fix",
-      ["--config", getEslintConfig()],
-      config.ignore.flatMap((ignore) => ["--ignore-pattern", ignore]),
-      eslintPaths
-    ),
-    {
-      name: "eslint",
-      config,
-    }
   );
 }
 
 /**
- * Run checks intended for CI, basically linting/formatting without auto-fixing.
+ * Run checks intended for CI, basically formatting without auto-fixing.
  */
 export async function check(argv: string[], config: Config) {
-  await lint(["--check"], config);
   await format(["--check"], config);
 
   // Type check with typescript.
@@ -290,7 +245,7 @@ export async function specs(argv: string[], config: Config) {
       "-t": "--test-pattern",
       "-u": "--update",
     },
-    { argv }
+    { argv },
   );
 
   const path = await PATHS.vitest();
@@ -302,7 +257,7 @@ export async function specs(argv: string[], config: Config) {
     testPattern && "--testNamePattern",
     since && ["--changed", since],
     ui && "--ui",
-    paths
+    paths,
   );
 
   if (watch) {
@@ -315,12 +270,12 @@ export async function specs(argv: string[], config: Config) {
         "watch",
         test.config && ["--config", test.config],
         test.dir && ["--dir", test.dir],
-        defaultArgs
+        defaultArgs,
       ),
       {
-        name: "vitest watch",
+        name: `vitest watch ${test.dir ?? "."}`,
         config,
-      }
+      },
     );
   }
 
@@ -331,12 +286,12 @@ export async function specs(argv: string[], config: Config) {
         "run",
         test.config && ["--config", test.config],
         test.dir && ["--dir", test.dir],
-        defaultArgs
+        defaultArgs,
       ),
       {
-        name: "vitest run",
+        name: `vitest run ${test.dir ?? "."}`,
         config,
-      }
+      },
     );
   }
 }
@@ -358,7 +313,7 @@ export async function format(argv: string[], config: Config) {
     {
       "--check": Boolean,
     },
-    { argv }
+    { argv },
   );
 
   if (!paths.length) {
@@ -372,23 +327,15 @@ export async function format(argv: string[], config: Config) {
     paths.push(`!${ignore}`);
   }
 
-  const [prettierPath, prettierPluginPackage] = await Promise.all([
-    PATHS.prettier(),
-    PATHS.prettierPluginPackage(),
-  ]);
+  const prettierPath = await PATHS.prettier();
 
   await run(
     prettierPath,
-    args(
-      ["--plugin", prettierPluginPackage],
-      !check && "--write",
-      check && "--check",
-      paths
-    ),
+    args(!check && "--write", check && "--check", paths),
     {
       name: "prettier",
       config,
-    }
+    },
   );
 }
 
@@ -398,10 +345,12 @@ export async function format(argv: string[], config: Config) {
 export async function install(argv: string[], config: Config) {
   if (isCI) return;
 
-  await run(await PATHS.husky(), ["install", join(configDir, "husky")], {
-    name: "husky",
-    config,
-  });
+  const dir = typeof Bun === "object" ? "bun" : "node";
+
+  logStep("husky", `using ${dir}`);
+
+  const husky = await import("husky");
+  husky.install(join(configDir, "husky", dir));
 }
 
 /**
@@ -420,7 +369,6 @@ const scripts = new Map([
   ["format", format],
   ["specs", specs],
   ["test", test],
-  ["lint", lint],
   ["check", check],
   ["install", install],
   ["config", config],
@@ -454,7 +402,7 @@ const configSchema = object({
     object({
       dir: string().optional(),
       config: string().optional(),
-    })
+    }),
   ).optional(),
 });
 

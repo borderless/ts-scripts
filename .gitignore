@@ -4,3 +4,4 @@ coverage/
 npm-debug.log
 dist/
 dist.es2015/
+bun.lockb
