@@ -50,8 +50,7 @@
     "maintain"
   ],
   "peerDependencies": {
-    "typescript": "*",
-    "vitest": "*"
+    "typescript": "*"
   },
   "dependencies": {
     "arg": "^5.0.1",
