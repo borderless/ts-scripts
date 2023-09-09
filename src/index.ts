@@ -194,7 +194,7 @@ export async function build(argv: string[], config: Config) {
 export async function preCommit(argv: string[], config: Config) {
   await run(
     await PATHS.lintStaged(),
-    ["--config", join(configDir, "lint-staged.mjs")],
+    ["--config", join(configDir, "lint-staged.cjs")],
     {
       name: "lint-staged",
       config,
