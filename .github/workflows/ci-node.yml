@@ -26,7 +26,9 @@ jobs:
             ${{ runner.os }}-node-
       - run: npm install -g npm@7
       - run: npm ci
-      - run: npm test
+      - run: npm run check
+      - run: npm run specs --coverage
+      - run: npm run build
       - uses: codecov/codecov-action@v1
         with:
           name: Node.js ${{ matrix.node-version }}
