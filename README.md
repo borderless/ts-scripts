@@ -20,10 +20,9 @@ In your `package.json` you can use the scripts:
 ```json
 {
   "scripts": {
-    "lint": "ts-scripts lint",
     "format": "ts-scripts format",
     "specs": "ts-scripts specs",
-    "test": "ts-scripts test",
+    "test": "ts-scripts test", // Runs `check`, `specs --coverage`, `build --no-clean`.
     "build": "ts-scripts build",
     "prepublishOnly": "npm run build",
     "prepare": "ts-scripts install"
@@ -31,12 +30,11 @@ In your `package.json` you can use the scripts:
 }
 ```
 
-You will also need to install `typescript` for building and `vitest` for testing.
+You will also need to install `typescript` for building and `vitest` for specs.
 
 ### Batteries Included
 
 - `install` - Installs `husky` and `lint-staged` for git commit hooks
-- `lint` - Uses `eslint --fix` on all supported files in `src` (i.e. `js`, `jsx`, `ts`, `tsx`)
 - `format` - Uses `prettier --write` on all supported files in `src` and the root directory
 - `specs` - Uses `vitest` to run test files match `*.{test,spec}.*` files
   - `--watch <index>` Runs vitest in watch mode on the config at `<index>`
@@ -45,15 +43,15 @@ You will also need to install `typescript` for building and `vitest` for testing
   - `--since <commit>` Runs tests on files changed since `<commit>`
   - `--test-pattern` Runs tests matching the specified pattern
 - `build` - Uses `rimraf` and `tsc`
-- `check` - Uses `eslint`, `prettier --check`, and `tsc` on each test "project"
+- `check` - Uses `prettier --check` and `tsc` on each test "project"
 - `test` - Runs `check`, `specs`, and `build`
 
 ### Configuration
 
 Configuration can get specified in your `package.json` file under `ts-scripts`:
 
-- `src` - An array of source directories used for `format` and `lint` (default: `["src"]`)
-- `ignore` - An array of patterns to ignore for `format` and `lint` (default: `[]`)
+- `src` - An array of source file directories (default: `["src"]`)
+- `ignore` - An array of patterns to ignore (default: `[]`)
 - `dist` - An array of output directories to clean before `build` (default: `["dist"]`)
 - `project` An array of TSConfig files to build using TypeScript (default: `["tsconfig.json"]`)
 - `checkProject` An array of TSConfig files to type check using TypeScript (default: `["tsconfig.json"]`)

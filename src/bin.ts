@@ -5,7 +5,7 @@ import { main } from "./index.js";
 
 const { _: args, "--help": help } = arg(
   { "--help": Boolean },
-  { stopAtPositional: true }
+  { stopAtPositional: true },
 );
 
 if (help || args.length === 0) {
