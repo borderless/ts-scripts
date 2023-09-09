@@ -2,7 +2,8 @@
 
 [![NPM version][npm-image]][npm-url]
 [![NPM downloads][downloads-image]][downloads-url]
-[![Build status][build-image]][build-url]
+[![Node build status][node-build-image]][node-build-url]
+[![Bun build status][bun-build-image]][bun-build-url]
 [![Build coverage][coverage-image]][coverage-url]
 
 > Simple, mostly opinionated, scripts to build TypeScript modules.
@@ -71,7 +72,9 @@ MIT
 [npm-url]: https://npmjs.org/package/@borderless/ts-scripts
 [downloads-image]: https://img.shields.io/npm/dm/@borderless/ts-scripts
 [downloads-url]: https://npmjs.org/package/@borderless/ts-scripts
-[build-image]: https://img.shields.io/github/workflow/status/borderless/ts-scripts/CI/main
-[build-url]: https://github.com/borderless/ts-scripts/actions/workflows/ci.yml?query=branch%3Amain
+[node-build-image]: https://img.shields.io/github/actions/workflow/status/borderless/ts-scripts/ci-node.yml?branch=main
+[node-build-url]: https://github.com/borderless/ts-scripts/actions/workflows/ci-node.yml?query=branch%3Amain
+[bun-build-image]: https://img.shields.io/github/actions/workflow/status/borderless/ts-scripts/ci-bun.yml?branch=main
+[bun-build-url]: https://github.com/borderless/ts-scripts/actions/workflows/ci-bun.yml?query=branch%3Amain
 [coverage-image]: https://img.shields.io/codecov/c/gh/borderless/ts-scripts
 [coverage-url]: https://codecov.io/gh/borderless/ts-scripts
