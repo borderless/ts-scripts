@@ -31,13 +31,13 @@
     "node": "^14.13.1 || >=16.0.0"
   },
   "scripts": {
-    "build": "${BIN_EXEC:=bun} src/bin.ts build",
-    "check": "${BIN_EXEC:=bun} src/bin.ts check",
-    "format": "${BIN_EXEC:=bun} src/bin.ts format",
-    "prepare": "${BIN_EXEC:=bun} src/bin.ts install",
+    "build": "${BIN_EXEC:=tsx} src/bin.ts build",
+    "check": "${BIN_EXEC:=tsx} src/bin.ts check",
+    "format": "${BIN_EXEC:=tsx} src/bin.ts format",
+    "prepare": "${BIN_EXEC:=tsx} src/bin.ts install",
     "prepublishOnly": "npm run build",
-    "specs": "${BIN_EXEC:=bun} src/bin.ts specs",
-    "test": "${BIN_EXEC:=bun} src/bin.ts test"
+    "specs": "${BIN_EXEC:=tsx} src/bin.ts specs",
+    "test": "${BIN_EXEC:=tsx} src/bin.ts test"
   },
   "files": [
     "configs/",

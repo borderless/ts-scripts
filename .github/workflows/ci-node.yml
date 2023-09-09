@@ -4,8 +4,6 @@ on:
   - pull_request
 jobs:
   test:
-    env:
-      BIN_EXEC: tsx
     name: Node.js ${{ matrix.node-version }}
     runs-on: ubuntu-latest
     strategy:

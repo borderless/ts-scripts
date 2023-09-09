@@ -4,6 +4,8 @@ on:
   - pull_request
 jobs:
   test:
+    env:
+      BIN_EXEC: bun
     name: Bun.js
     runs-on: ubuntu-latest
     steps:
