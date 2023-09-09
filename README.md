@@ -4,7 +4,6 @@
 [![NPM downloads][downloads-image]][downloads-url]
 [![Node build status][node-build-image]][node-build-url]
 [![Bun build status][bun-build-image]][bun-build-url]
-[![Build coverage][coverage-image]][coverage-url]
 
 > Simple, mostly opinionated, scripts to build TypeScript modules.
 
@@ -76,5 +75,3 @@ MIT
 [node-build-url]: https://github.com/borderless/ts-scripts/actions/workflows/ci-node.yml?query=branch%3Amain
 [bun-build-image]: https://img.shields.io/github/actions/workflow/status/borderless/ts-scripts/ci-bun.yml?branch=main&label=bun%20build
 [bun-build-url]: https://github.com/borderless/ts-scripts/actions/workflows/ci-bun.yml?query=branch%3Amain
-[coverage-image]: https://img.shields.io/codecov/c/gh/borderless/ts-scripts
-[coverage-url]: https://codecov.io/gh/borderless/ts-scripts
