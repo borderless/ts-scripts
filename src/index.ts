@@ -300,9 +300,9 @@ export async function specs(argv: string[], config: Config) {
  * Run full test suite without automatic fixes.
  */
 export async function test(argv: string[], config: Config) {
+  await build(["--no-clean"], config);
   await check([], config);
   await specs(["--coverage"], config);
-  await build(["--no-clean"], config);
 }
 
 /**
