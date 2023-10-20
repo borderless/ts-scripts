@@ -331,7 +331,12 @@ export async function format(argv: string[], config: Config) {
 
   await run(
     prettierPath,
-    args(!check && "--write", check && "--check", paths),
+    args(
+      ["--config", join(configDir, "prettier.js")],
+      !check && "--write",
+      check && "--check",
+      paths,
+    ),
     {
       name: "prettier",
       config,

@@ -1,35 +1,40 @@
 {
   "name": "@borderless/ts-scripts",
   "version": "0.14.2",
-  "publishConfig": {
-    "access": "public"
-  },
   "description": "Simple, mostly opinionated, scripts to build TypeScript modules",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/borderless/ts-scripts.git"
-  },
-  "author": {
-    "name": "Blake Embrey",
-    "email": "hello@blakeembrey.com",
-    "url": "http://blakeembrey.me"
-  },
+  "keywords": [
+    "scripts",
+    "typescript",
+    "package",
+    "maintain"
+  ],
   "homepage": "https://github.com/borderless/ts-scripts",
   "bugs": {
     "url": "https://github.com/borderless/ts-scripts/issues"
   },
-  "bin": {
-    "ts-scripts": "dist/bin.js"
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/borderless/ts-scripts.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Blake Embrey",
+    "email": "hello@blakeembrey.com",
+    "url": "http://blakeembrey.me"
   },
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
     "./configs/tsconfig.json": "./configs/tsconfig.json"
   },
-  "engines": {
-    "node": "^14.13.1 || >=16.0.0"
+  "types": "dist/index.d.ts",
+  "bin": {
+    "ts-scripts": "dist/bin.js"
   },
+  "files": [
+    "configs/",
+    "dist/"
+  ],
   "scripts": {
     "build": "${BIN_EXEC:=tsx} src/bin.ts build",
     "check": "${BIN_EXEC:=tsx} src/bin.ts check",
@@ -39,27 +44,15 @@
     "specs": "${BIN_EXEC:=tsx} src/bin.ts specs",
     "test": "${BIN_EXEC:=tsx} src/bin.ts test"
   },
-  "files": [
-    "configs/",
-    "dist/"
-  ],
-  "keywords": [
-    "scripts",
-    "typescript",
-    "package",
-    "maintain"
-  ],
-  "peerDependencies": {
-    "typescript": "*"
-  },
   "dependencies": {
     "arg": "^5.0.1",
     "ci-info": "^3.3.0",
     "find-up": "^6.2.0",
     "husky": "^8.0.1",
-    "lint-staged": "^14.0.1",
+    "lint-staged": "^15.0.2",
     "pkg-conf": "^4.0.0",
     "prettier": "^3.0.3",
+    "prettier-plugin-packagejson": "^2.4.6",
     "rimraf": "^5.0.1",
     "zod": "^3.17.3"
   },
@@ -71,7 +64,15 @@
     "typescript": "^5.2.2",
     "vitest": "^0.34.4"
   },
-  "typings": "dist/index.d.ts",
+  "peerDependencies": {
+    "typescript": "*"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "ts-scripts": {
     "project": [
       "tsconfig.build.json"
